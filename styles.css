@@ -1,0 +1,360 @@
+/* ============================================================
+   VALORG — styles
+   Everything is driven by the CSS variables in :root below.
+   Change a value there and it updates everywhere at once.
+   ============================================================ */
+
+:root {
+  /* Colors */
+  --bg:          #0e0f13;
+  --bg-raised:   #16181f;
+  --bg-hover:    #1c1f28;
+  --border:      #262a35;
+  --border-soft: #1e222c;
+  --text:        #e8eaf0;
+  --text-dim:    #8b93a7;
+  --text-faint:  #5c6478;
+  --accent:      #6d8cff;
+  --accent-dim:  #3a4a8a;
+
+  /* Status dots */
+  --s-idea:   #8b93a7;
+  --s-active: #4ade80;
+  --s-paused: #fbbf24;
+  --s-done:   #6d8cff;
+
+  /* Spacing + shape */
+  --radius:    12px;
+  --radius-sm: 8px;
+  --gap:       16px;
+  --page-max:  1100px;
+}
+
+* { box-sizing: border-box; }
+
+/* A class like `.empty { display: flex }` outranks the browser's own [hidden]
+   rule, so `el.hidden = true` would set the property and change nothing on
+   screen. This puts [hidden] back on top. */
+[hidden] { display: none !important; }
+
+html, body { height: 100%; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+button, input, textarea, select { font: inherit; color: inherit; }
+
+/* ============ TOP BAR ============ */
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: rgba(14, 15, 19, 0.85);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.topbar-inner {
+  max-width: var(--page-max);
+  margin: 0 auto;
+  padding: 14px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.brand-mark {
+  color: var(--accent);
+  font-size: 18px;
+  line-height: 1;
+}
+
+.brand-name {
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  font-size: 14px;
+}
+
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.count {
+  color: var(--text-faint);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ============ BUTTONS ============ */
+
+.btn {
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  padding: 8px 14px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: #0b0d14;
+  font-weight: 600;
+}
+.btn-primary:hover { background: #7d9aff; }
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text-dim);
+  border-color: var(--border);
+}
+.btn-ghost:hover {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+
+.plus {
+  font-size: 16px;
+  line-height: 1;
+  margin-right: 2px;
+}
+
+/* ============ PAGE ============ */
+
+.page {
+  max-width: var(--page-max);
+  margin: 0 auto;
+  padding: 40px 24px 96px;
+}
+
+/* ============ EMPTY STATE ============ */
+
+.empty {
+  display: flex;
+  justify-content: center;
+  padding-top: 80px;
+}
+
+.empty-target {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  max-width: 420px;
+  padding: 56px 32px;
+  background: transparent;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.empty-target:hover {
+  border-color: var(--accent-dim);
+  background: var(--bg-raised);
+}
+
+.empty-plus {
+  font-size: 32px;
+  line-height: 1;
+  color: var(--text-faint);
+  margin-bottom: 8px;
+  transition: color 0.15s;
+}
+.empty-target:hover .empty-plus { color: var(--accent); }
+
+.empty-title { font-size: 15px; font-weight: 500; }
+.empty-sub   { font-size: 13px; color: var(--text-faint); }
+
+/* ============ GRID + CARDS ============ */
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: var(--gap);
+}
+
+.card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 140px;
+  padding: 18px;
+  background: var(--bg-raised);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius);
+  transition: border-color 0.15s, transform 0.15s;
+}
+.card:hover {
+  border-color: var(--border);
+  transform: translateY(-1px);
+}
+
+.card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.card-name {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.card-note {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-dim);
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.card-foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 6px;
+  font-size: 12px;
+  color: var(--text-faint);
+}
+
+.dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex: none;
+}
+.dot-idea   { background: var(--s-idea); }
+.dot-active { background: var(--s-active); }
+.dot-paused { background: var(--s-paused); }
+.dot-done   { background: var(--s-done); }
+
+.card-status { text-transform: capitalize; }
+
+.card-date { margin-left: auto; }
+
+/* Per-card menu buttons — only visible on hover */
+.card-tools {
+  display: flex;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.card:hover .card-tools,
+.card:focus-within .card-tools { opacity: 1; }
+
+/* Touch devices have no hover, so the tools would never appear. Always show. */
+@media (hover: none) {
+  .card-tools { opacity: 1; }
+}
+
+.icon-btn {
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  padding: 4px 6px;
+  color: var(--text-faint);
+  cursor: pointer;
+  line-height: 1;
+  font-size: 13px;
+  transition: background 0.15s, color 0.15s;
+}
+.icon-btn:hover { background: var(--bg-hover); color: var(--text); }
+.icon-btn.danger:hover { color: #f87171; }
+
+/* ============ DIALOG ============ */
+
+.dialog {
+  width: min(440px, calc(100vw - 32px));
+  padding: 24px;
+  background: var(--bg-raised);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.dialog::backdrop {
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(2px);
+}
+
+.dialog-title {
+  margin: 0 0 20px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.field {
+  display: block;
+  margin-bottom: 16px;
+}
+
+.field-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
+.opt {
+  color: var(--text-faint);
+  font-size: 12px;
+}
+
+.input {
+  width: 100%;
+  padding: 9px 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  outline: none;
+  transition: border-color 0.15s;
+}
+.input:focus { border-color: var(--accent-dim); }
+.input::placeholder { color: var(--text-faint); }
+
+.textarea {
+  resize: vertical;
+  min-height: 68px;
+  font-family: inherit;
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+/* ============ MOBILE ============ */
+
+@media (max-width: 560px) {
+  .page { padding: 24px 16px 80px; }
+  .topbar-inner { padding: 12px 16px; }
+  .count { display: none; }
+  .grid { grid-template-columns: 1fr; }
+  .empty { padding-top: 40px; }
+}

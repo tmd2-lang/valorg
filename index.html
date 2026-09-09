@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>VALORG</title>
+  <meta name="description" content="A place to organize projects, companies, and everything else." />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>◈</text></svg>" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <!-- ============ HEADER ============ -->
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <span class="brand-mark">◈</span>
+        <span class="brand-name">VALORG</span>
+      </div>
+      <div class="topbar-actions">
+        <span class="count" id="count"></span>
+        <button class="btn btn-primary" id="addBtnTop">
+          <span class="plus">+</span> Add project
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ============ MAIN ============ -->
+  <main class="page">
+
+    <!-- Shown when there are zero projects -->
+    <section class="empty" id="empty" hidden>
+      <button class="empty-target" id="addBtnEmpty">
+        <span class="empty-plus">+</span>
+        <span class="empty-title">Add your first project</span>
+        <span class="empty-sub">Companies, side projects, anything you're building</span>
+      </button>
+    </section>
+
+    <!-- The grid of project cards -->
+    <section class="grid" id="grid"></section>
+
+  </main>
+
+  <!-- ============ ADD / EDIT DIALOG ============ -->
+  <dialog class="dialog" id="dialog">
+    <form method="dialog" id="form">
+      <h2 class="dialog-title" id="dialogTitle">New project</h2>
+
+      <label class="field">
+        <span class="field-label">Name</span>
+        <input class="input" id="fName" name="name" type="text"
+               placeholder="Valorg, Inc." maxlength="80" required autocomplete="off" />
+      </label>
+
+      <label class="field">
+        <span class="field-label">What is it? <span class="opt">optional</span></span>
+        <textarea class="input textarea" id="fNote" name="note" rows="3"
+                  placeholder="One line so future-you remembers." maxlength="280"></textarea>
+      </label>
+
+      <label class="field">
+        <span class="field-label">Status</span>
+        <select class="input" id="fStatus" name="status">
+          <option value="idea">Idea</option>
+          <option value="active" selected>Active</option>
+          <option value="paused">Paused</option>
+          <option value="done">Done</option>
+        </select>
+      </label>
+
+      <div class="dialog-actions">
+        <button class="btn btn-ghost" type="button" id="cancelBtn">Cancel</button>
+        <button class="btn btn-primary" type="submit" id="saveBtn">Create</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="app.js"></script>
+</body>
+</html>
