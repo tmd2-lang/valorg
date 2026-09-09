@@ -1,20 +1,31 @@
 /* ============================================================
    VALORG — app logic
 
-   The whole app is four ideas:
-     1. STATE    — an array of project objects, the single source of truth
-     2. STORAGE  — that array saved to localStorage so it survives reload
+   Same four ideas as before, with one thing changed:
+
+     1. STATE    — an array of project objects, held in memory
+     2. STORAGE  — now a database on Supabase's computers, not this browser
      3. ROUTER   — the URL hash decides which view is on screen
      4. RENDER   — a function that draws the screen from the state
 
-   Rule that keeps this simple: never edit the DOM directly to change
-   data. Change `projects`, call save(), call render(). Always.
+   Because storage moved off this machine, saving now takes time. The
+   pattern used throughout:
+
+       change `projects` -> render() immediately -> tell the server
+
+   The screen updates the instant you click, and the save happens behind
+   it. If the save fails, we say so and reload the truth from the server.
    ============================================================ */
 
 
-/* ---------- 1. STATE ---------- */
+/* ---------- CONNECT ---------- */
 
-const STORAGE_KEY = 'valorg.projects.v1';
+// `supabase` (lowercase) is the library loaded from the CDN in index.html.
+// `db` is our connection to your particular project.
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+
+/* ---------- 1. STATE ---------- */
 
 /**
  * @type {Array<{
@@ -22,45 +33,20 @@ const STORAGE_KEY = 'valorg.projects.v1';
  *   tasks: Array<{id: string, title: string, done: boolean, createdAt: number}>
  * }>}
  */
-let projects = load();
+let projects = [];
 
-// When we're editing an existing project this holds its id. null = creating new.
-let editingId = null;
-
-
-/* ---------- 2. STORAGE ---------- */
-
-function load() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    const parsed = raw ? JSON.parse(raw) : [];
-    if (!Array.isArray(parsed)) return [];
-
-    // Projects saved before tasks existed have no `tasks` key. Give them an
-    // empty one on the way in so the rest of the code never has to check.
-    // Do this for any field you add later — old saved data must keep working.
-    return parsed.map(p => ({
-      ...p,
-      tasks: Array.isArray(p.tasks) ? p.tasks : [],
-    }));
-  } catch {
-    // Corrupt or blocked storage — start clean rather than crash.
-    return [];
-  }
-}
-
-function save() {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
-  } catch {
-    // Private browsing can block writes. Not fatal — the page still works.
-  }
-}
+let user = null;          // the signed-in account, or null
+let editingId = null;     // project being edited in the dialog, or null
 
 
 /* ---------- ELEMENTS ---------- */
 
 const $ = id => document.getElementById(id);
+
+const booting  = $('booting');
+const authView = $('authView');
+const appView  = $('appView');
+const banner   = $('banner');
 
 const listView   = $('listView');
 const detailView = $('detailView');
@@ -68,6 +54,8 @@ const grid       = $('grid');
 const empty      = $('empty');
 const countEl    = $('count');
 const addBtnTop  = $('addBtnTop');
+const account      = $('account');
+const accountEmail = $('accountEmail');
 
 const dName    = $('dName');
 const dNote    = $('dNote');
@@ -86,14 +74,78 @@ const fName       = $('fName');
 const fNote       = $('fNote');
 const fStatus     = $('fStatus');
 
+const importBar  = $('importBar');
+const importText = $('importText');
+
+
+/* ---------- MESSAGES ---------- */
+
+let bannerTimer = null;
+
+function say(message, kind = 'info') {
+  clearTimeout(bannerTimer);
+  banner.textContent = message;
+  banner.className   = `banner banner-${kind}`;
+  banner.hidden      = !message;
+
+  // Good news disappears on its own; problems stay put.
+  if (message && kind === 'info') {
+    bannerTimer = setTimeout(() => { banner.hidden = true; }, 2500);
+  }
+}
+
+
+/* ---------- 2. STORAGE (the database) ---------- */
+
+/* The table stores `created_at`; the app has always called it `createdAt`.
+   These two functions translate between the two shapes so the rest of the
+   code never has to think about it. */
+
+function fromRow(row) {
+  return {
+    id:        row.id,
+    name:      row.name,
+    note:      row.note ?? '',
+    status:    row.status,
+    tasks:     Array.isArray(row.tasks) ? row.tasks : [],
+    createdAt: new Date(row.created_at).getTime(),
+  };
+}
+
+async function loadProjects() {
+  const { data, error } = await db
+    .from('projects')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    say(`Could not load your projects: ${error.message}`, 'error');
+    return false;
+  }
+
+  projects = data.map(fromRow);
+  return true;
+}
+
+/* Every write goes through here. It runs the database call, and if the call
+   fails it pulls the real data back down so the screen can't keep showing a
+   change that never actually saved. */
+async function push(work) {
+  const { error } = await work();
+  if (!error) return true;
+
+  say(`Not saved: ${error.message}`, 'error');
+  await loadProjects();
+  render();
+  return false;
+}
+
 
 /* ---------- 3. ROUTER ---------- */
 
 /* Two routes:
      #/           the list of all projects
-     #/p/<id>     one project's detail page
-   Using the hash means the browser's back button works for free, and it
-   still works as a plain static file with no server routing rules. */
+     #/p/<id>     one project's detail page */
 
 function currentRoute() {
   const match = location.hash.match(/^#\/p\/(.+)$/);
@@ -101,25 +153,40 @@ function currentRoute() {
 }
 
 function go(hash) {
-  const changed = location.hash !== hash;
-  if (changed) location.hash = hash;   // updates the URL and history
-  render();                            // draw now; don't wait on the event
+  if (location.hash !== hash) location.hash = hash;
+  render();                       // draw now; don't wait on the event
 }
 
-// Covers the browser's back and forward buttons, which change the hash
-// without going through go().
+// Covers the browser's back and forward buttons.
 window.addEventListener('hashchange', render);
 
 
 /* ---------- 4. RENDER ---------- */
 
 function render() {
+  // Signed out: only the sign-in screen exists.
+  if (!user) {
+    booting.hidden  = true;
+    authView.hidden = false;
+    appView.hidden  = true;
+    account.hidden  = true;
+    addBtnTop.hidden = true;
+    countEl.hidden   = true;
+    return;
+  }
+
+  booting.hidden  = true;
+  authView.hidden = true;
+  appView.hidden  = false;
+  account.hidden  = false;
+  accountEmail.textContent = user.email;
+
   const route = currentRoute();
   const project = route.view === 'detail'
     ? projects.find(p => p.id === route.id)
     : null;
 
-  // A detail link for a deleted project falls back to the list.
+  // A link to a project that's gone falls back to the list.
   if (route.view === 'detail' && !project) return go('#/');
 
   const onDetail = Boolean(project);
@@ -172,7 +239,6 @@ function renderDetail(p) {
 
 /* ---------- BUILDING NODES ---------- */
 
-/** Build one project card. Returns a DOM node. */
 function cardFor(p) {
   const card = el('article', 'card');
   card.tabIndex = 0;
@@ -213,7 +279,6 @@ function cardFor(p) {
   return card;
 }
 
-/** Build one task row. */
 function taskRow(project, task) {
   const li = el('li', 'task' + (task.done ? ' task-done' : ''));
 
@@ -281,7 +346,7 @@ function openDialog(id = null) {
   fName.focus();
 }
 
-function submitProject() {
+async function submitProject() {
   const name = fName.value.trim();
   if (!name) return;                       // `required` already guards this
 
@@ -290,24 +355,31 @@ function submitProject() {
     note:   fNote.value.trim(),
     status: fStatus.value,
   };
+  const id = editingId;
+  editingId = null;
 
-  if (editingId) {
-    projects = projects.map(p => (p.id === editingId ? { ...p, ...fields } : p));
-  } else {
-    projects.push({
-      id: crypto.randomUUID(),
-      createdAt: Date.now(),
-      tasks: [],
-      ...fields,
-    });
+  if (id) {
+    // Editing: update on screen first, then save.
+    projects = projects.map(p => (p.id === id ? { ...p, ...fields } : p));
+    render();
+    await push(() => db.from('projects').update(fields).eq('id', id));
+    return;
   }
 
-  editingId = null;
-  save();
+  // Creating: the database makes the id, so wait for the row to come back.
+  const { data, error } = await db
+    .from('projects')
+    .insert({ ...fields, tasks: [] })
+    .select()
+    .single();
+
+  if (error) { say(`Could not create: ${error.message}`, 'error'); return; }
+
+  projects.push(fromRow(data));
   render();
 }
 
-function removeProject(id) {
+async function removeProject(id) {
   const p = projects.find(x => x.id === id);
   if (!p) return;
 
@@ -315,44 +387,140 @@ function removeProject(id) {
   if (!confirm(`Delete "${p.name}"${extra}?`)) return;
 
   projects = projects.filter(x => x.id !== id);
-  save();
 
-  // If we were looking at it, the router will bounce us back to the list.
+  // If we were looking at it, go back to the list; otherwise just redraw.
   if (currentRoute().id === id) go('#/');
   else render();
+
+  await push(() => db.from('projects').delete().eq('id', id));
 }
 
 
 /* ---------- TASK ACTIONS ---------- */
 
-/* Each of these finds the project, produces a NEW tasks array, then saves
-   and re-renders. Building a new array instead of mutating the old one is
-   the habit that makes state changes easy to follow. */
+/* Tasks live in a JSON column on the project row, so each of these builds
+   the new task list, shows it, then saves the whole list back. */
+
+async function saveTasks(projectId, tasks) {
+  projects = projects.map(p => (p.id === projectId ? { ...p, tasks } : p));
+  render();
+  await push(() => db.from('projects').update({ tasks }).eq('id', projectId));
+}
 
 function addTask(projectId, title) {
-  projects = projects.map(p => p.id !== projectId ? p : {
-    ...p,
-    tasks: [...p.tasks, { id: crypto.randomUUID(), title, done: false, createdAt: Date.now() }],
-  });
-  save();
-  render();
+  const p = projects.find(x => x.id === projectId);
+  if (!p) return;
+  saveTasks(projectId, [
+    ...p.tasks,
+    { id: crypto.randomUUID(), title, done: false, createdAt: Date.now() },
+  ]);
 }
 
 function toggleTask(projectId, taskId) {
-  projects = projects.map(p => p.id !== projectId ? p : {
-    ...p,
-    tasks: p.tasks.map(t => t.id === taskId ? { ...t, done: !t.done } : t),
-  });
-  save();
-  render();
+  const p = projects.find(x => x.id === projectId);
+  if (!p) return;
+  saveTasks(projectId, p.tasks.map(t => t.id === taskId ? { ...t, done: !t.done } : t));
 }
 
 function removeTask(projectId, taskId) {
-  projects = projects.map(p => p.id !== projectId ? p : {
-    ...p,
-    tasks: p.tasks.filter(t => t.id !== taskId),
+  const p = projects.find(x => x.id === projectId);
+  if (!p) return;
+  saveTasks(projectId, p.tasks.filter(t => t.id !== taskId));
+}
+
+
+/* ---------- BRINGING OVER OLD BROWSER DATA ---------- */
+
+/* Projects made before this app had accounts are still sitting in this
+   browser's own storage. Offer to move them up to the database once. */
+
+const OLD_KEY    = 'valorg.projects.v1';
+const BACKUP_KEY = 'valorg.projects.imported-backup';
+
+function localLeftovers() {
+  try {
+    const raw = localStorage.getItem(OLD_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch { return []; }
+}
+
+function offerImport() {
+  const found = localLeftovers();
+  if (!found.length) { importBar.hidden = true; return; }
+
+  importText.textContent =
+    `${found.length} project${found.length === 1 ? '' : 's'} saved in this browser from before you had an account.`;
+  importBar.hidden = false;
+}
+
+async function runImport() {
+  const found = localLeftovers();
+  if (!found.length) return;
+
+  const rows = found.map(p => ({
+    name:   p.name,
+    note:   p.note ?? '',
+    status: p.status ?? 'active',
+    tasks:  Array.isArray(p.tasks) ? p.tasks : [],
+  }));
+
+  const { data, error } = await db.from('projects').insert(rows).select();
+  if (error) { say(`Import failed: ${error.message}`, 'error'); return; }
+
+  // Keep the old copy under a different name rather than deleting it.
+  try {
+    localStorage.setItem(BACKUP_KEY, localStorage.getItem(OLD_KEY));
+    localStorage.removeItem(OLD_KEY);
+  } catch {}
+
+  projects.push(...data.map(fromRow));
+  importBar.hidden = true;
+  say(`Imported ${data.length} project${data.length === 1 ? '' : 's'}.`);
+  render();
+}
+
+
+/* ---------- AUTH ---------- */
+
+async function sendMagicLink(email) {
+  const btn = $('authBtn');
+  btn.disabled = true;
+  btn.textContent = 'Sending…';
+
+  const { error } = await db.auth.signInWithOtp({
+    email,
+    options: { emailRedirectTo: location.origin },
   });
-  save();
+
+  btn.disabled = false;
+  btn.textContent = 'Email me a link';
+
+  if (error) { say(error.message, 'error'); return; }
+
+  $('authNote').textContent =
+    `Check ${email} for a link. It signs you in when you click it.`;
+  $('authNote').className = 'auth-note auth-note-sent';
+}
+
+/* Supabase reports the existing session on startup, and start() below also
+   asks for it — so without this guard the same sign-in would load twice. */
+let setUpFor = null;
+
+async function onSignedIn(session) {
+  if (setUpFor === session.user.id) return;
+  setUpFor = session.user.id;
+
+  user = session.user;
+  await loadProjects();
+  offerImport();
+  render();
+}
+
+function onSignedOut() {
+  setUpFor = null;
+  user = null;
+  projects = [];
   render();
 }
 
@@ -367,7 +535,6 @@ $('cancelBtn').addEventListener('click',   () => dialog.close());
 form.addEventListener('submit', submitProject);
 
 // Enter submits from the name field; Cmd/Ctrl+Enter submits from the textarea.
-// (A plain Enter inside a <textarea> should still insert a newline.)
 fName.addEventListener('keydown', e => {
   if (e.key === 'Enter') { e.preventDefault(); form.requestSubmit(); }
 });
@@ -375,22 +542,18 @@ fNote.addEventListener('keydown', e => {
   if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); form.requestSubmit(); }
 });
 
-// Reset edit state if the dialog closes any other way (Esc, backdrop).
 dialog.addEventListener('close', () => { editingId = null; });
 
-// The back link keeps its href (so right-click / open-in-new-tab still work)
-// but navigates through go(), which renders immediately instead of waiting
-// on a hashchange event.
+// The back link keeps its href (right-click and open-in-new-tab still work)
+// but navigates through go(), which renders immediately.
 document.querySelector('.back').addEventListener('click', e => {
   e.preventDefault();
   go('#/');
 });
 
-// Detail-view header buttons act on whichever project is open.
 $('dEdit').addEventListener('click',   () => openDialog(currentRoute().id));
 $('dDelete').addEventListener('click', () => removeProject(currentRoute().id));
 
-// Add a task. The form's own submit handles both Enter and the Add button.
 taskForm.addEventListener('submit', e => {
   e.preventDefault();
   const title = taskInput.value.trim();
@@ -400,14 +563,37 @@ taskForm.addEventListener('submit', e => {
   taskInput.focus();
 });
 
+$('authForm').addEventListener('submit', e => {
+  e.preventDefault();
+  sendMagicLink($('authEmail').value.trim());
+});
+
+$('signOutBtn').addEventListener('click', () => db.auth.signOut());
+
+$('importYes').addEventListener('click', runImport);
+$('importNo').addEventListener('click',  () => { importBar.hidden = true; });
+
 // Keyboard shortcut: "n" for new project (list view only).
 document.addEventListener('keydown', e => {
   const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName);
   if (e.key === 'n' && !typing && !dialog.open && !e.metaKey && !e.ctrlKey
-      && currentRoute().view === 'list') {
+      && user && currentRoute().view === 'list') {
     e.preventDefault();
     openDialog();
   }
 });
 
-render();
+
+/* ---------- START ---------- */
+
+/* Fires on first load, after a magic-link click, and on sign out. */
+db.auth.onAuthStateChange((event, session) => {
+  if (session?.user) onSignedIn(session);
+  else onSignedOut();
+});
+
+(async function start() {
+  const { data: { session } } = await db.auth.getSession();
+  if (session?.user) await onSignedIn(session);
+  else onSignedOut();
+})();

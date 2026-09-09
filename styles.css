@@ -530,3 +530,103 @@ button, input, textarea, select { font: inherit; color: inherit; }
   color: var(--text-faint);
   font-size: 13px;
 }
+
+/* ============ LOADING ============ */
+
+.booting {
+  padding: 80px 24px;
+  text-align: center;
+  color: var(--text-faint);
+  font-size: 14px;
+}
+
+/* ============ BANNER ============ */
+
+.banner {
+  padding: 9px 24px;
+  font-size: 13px;
+  text-align: center;
+  border-bottom: 1px solid var(--border-soft);
+}
+.banner-info  { background: var(--bg-raised); color: var(--text-dim); }
+.banner-error { background: #2a1618; color: #fca5a5; border-bottom-color: #4a2225; }
+
+/* ============ ACCOUNT ============ */
+
+.account {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-left: 14px;
+  margin-left: 4px;
+  border-left: 1px solid var(--border);
+}
+
+.account-email {
+  color: var(--text-faint);
+  font-size: 12px;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.btn-sm { padding: 5px 10px; font-size: 13px; }
+
+/* ============ SIGN IN ============ */
+
+.auth {
+  max-width: 380px;
+  margin: 80px auto 0;
+  text-align: center;
+}
+
+.auth-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+}
+
+.auth-sub {
+  margin: 8px 0 28px;
+  color: var(--text-dim);
+  font-size: 14px;
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.auth-note {
+  margin: 18px 0 0;
+  color: var(--text-faint);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.auth-note-sent { color: var(--s-active); }
+
+/* ============ IMPORT BAR ============ */
+
+.import {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+  padding: 12px 16px;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
+.import-actions {
+  display: flex;
+  gap: 8px;
+  flex: none;
+}

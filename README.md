@@ -17,9 +17,11 @@ npx serve .
 
 | File | What's in it |
 |---|---|
-| `index.html` | Page structure — header, list view, detail view, add/edit dialog |
+| `index.html` | Page structure — sign-in, list view, detail view, add/edit dialog |
 | `styles.css` | All styling. Colors and spacing live in the `:root` variables at the top |
-| `app.js` | State, localStorage persistence, routing, and rendering |
+| `app.js` | State, database calls, routing, and rendering |
+| `config.js` | Supabase project URL and public key |
+| `supabase-setup.sql` | Run once in Supabase to create the table |
 
 ## How it works
 
@@ -27,7 +29,7 @@ Four ideas, and they're worth internalizing because every UI framework is
 a fancier version of the same loop:
 
 1. **State** — `projects` is an array of objects. Single source of truth.
-2. **Storage** — that array is JSON'd into `localStorage` on every change.
+2. **Storage** — a Postgres table on Supabase, reached straight from the page.
 3. **Router** — the URL hash decides which view is on screen.
 4. **Render** — `render()` redraws the screen from the array.
 
@@ -62,8 +64,31 @@ back button.
 When you add a field later, handle its absence in `load()` the way `tasks`
 is handled — data already saved in the browser won't have it.
 
-Data lives in your browser's localStorage — it's per-browser and per-device.
-Moving to a real shared database is the natural next step.
+Data lives in a Supabase table, so it follows your account rather than your
+browser. Sign in on another machine and it's all there.
+
+Because the data is on another computer now, saving takes time. The pattern
+used everywhere: change the array, redraw immediately, then tell the server.
+If a save fails, the app says so and pulls the real data back down — the
+screen never keeps showing a change that didn't save.
+
+## Setup
+
+1. In Supabase: **SQL Editor → New query**, paste `supabase-setup.sql`, Run.
+2. In Supabase: **Authentication → URL Configuration**, add your site URLs to
+   *Redirect URLs* (`http://localhost:4321` for local, plus your Vercel URL).
+3. Open the site, enter your email, click the link it sends you.
+
+### Why the key in `config.js` is safe
+
+The `anon` key identifies the project; it is not a password, and it is meant
+to ship in the page. What protects the data is the row-security rule in
+`supabase-setup.sql`: every query is silently filtered to rows whose `user_id`
+matches whoever is signed in. Without that rule the table would be wide open —
+it is the load-bearing part of this setup.
+
+The key that must never appear here is `service_role`, which ignores those
+rules entirely.
 
 ## Deploy to Vercel
 

@@ -22,17 +22,53 @@
         <button class="btn btn-primary" id="addBtnTop">
           <span class="plus">+</span> Add project
         </button>
+        <div class="account" id="account" hidden>
+          <span class="account-email" id="accountEmail"></span>
+          <button class="btn btn-ghost btn-sm" id="signOutBtn">Sign out</button>
+        </div>
       </div>
     </div>
   </header>
 
-  <!-- ============ MAIN ============ -->
-  <main class="page">
+  <!-- Slim strip under the header for saving / connection messages -->
+  <div class="banner" id="banner" hidden></div>
+
+  <!-- ============ LOADING ============ -->
+  <div class="booting" id="booting">Loading…</div>
+
+  <!-- ============ SIGN IN ============ -->
+  <main class="page" id="authView" hidden>
+    <section class="auth">
+      <h1 class="auth-title">VALORG</h1>
+      <p class="auth-sub">Sign in to get to your projects.</p>
+
+      <form class="auth-form" id="authForm">
+        <input class="input" id="authEmail" type="email" required
+               placeholder="you@example.com" autocomplete="email" />
+        <button class="btn btn-primary" type="submit" id="authBtn">Email me a link</button>
+      </form>
+
+      <p class="auth-note" id="authNote">
+        No password. We email you a link, you click it, you're in.
+      </p>
+    </section>
+  </main>
+
+  <!-- ============ THE APP ============ -->
+  <main class="page" id="appView" hidden>
+
+    <!-- Offer to bring over data saved in this browser before we had accounts -->
+    <div class="import" id="importBar" hidden>
+      <span id="importText"></span>
+      <span class="import-actions">
+        <button class="btn btn-primary btn-sm" id="importYes">Import</button>
+        <button class="btn btn-ghost btn-sm" id="importNo">No thanks</button>
+      </span>
+    </div>
 
     <!-- ---- LIST VIEW: all projects ---- -->
     <div id="listView">
 
-      <!-- Shown when there are zero projects -->
       <section class="empty" id="empty" hidden>
         <button class="empty-target" id="addBtnEmpty">
           <span class="empty-plus">+</span>
@@ -41,7 +77,6 @@
         </button>
       </section>
 
-      <!-- The grid of project cards -->
       <section class="grid" id="grid"></section>
 
     </div>
@@ -117,6 +152,8 @@
     </form>
   </dialog>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+  <script src="config.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
