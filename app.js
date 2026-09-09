@@ -483,24 +483,65 @@ async function runImport() {
 
 /* ---------- AUTH ---------- */
 
-async function sendMagicLink(email) {
-  const btn = $('authBtn');
-  btn.disabled = true;
-  btn.textContent = 'Sending…';
+/* The sign-in screen does double duty: 'signin' for an account that exists,
+   'signup' for making a new one. Same two boxes either way. */
+let authMode = 'signin';
 
-  const { error } = await db.auth.signInWithOtp({
-    email,
-    options: { emailRedirectTo: location.origin },
-  });
+const authBtn      = $('authBtn');
+const authSub      = $('authSub');
+const authNote     = $('authNote');
+const authSwitch   = $('authSwitch');
+const authEmail    = $('authEmail');
+const authPassword = $('authPassword');
 
-  btn.disabled = false;
-  btn.textContent = 'Email me a link';
+function setAuthMode(mode) {
+  authMode = mode;
+  const signingUp = mode === 'signup';
 
-  if (error) { say(error.message, 'error'); return; }
+  authSub.textContent      = signingUp ? 'Create your account.' : 'Sign in to get to your projects.';
+  authBtn.textContent      = signingUp ? 'Create account' : 'Sign in';
+  authSwitch.textContent   = signingUp ? 'Already have an account? Sign in' : 'Need an account? Sign up';
+  authPassword.autocomplete = signingUp ? 'new-password' : 'current-password';
 
-  $('authNote').textContent =
-    `Check ${email} for a link. It signs you in when you click it.`;
-  $('authNote').className = 'auth-note auth-note-sent';
+  authNote.hidden = true;
+  say('');
+}
+
+function authNoteSay(text, good = false) {
+  authNote.textContent = text;
+  authNote.className   = 'auth-note' + (good ? ' auth-note-sent' : '');
+  authNote.hidden      = !text;
+}
+
+async function submitAuth() {
+  const email    = authEmail.value.trim();
+  const password = authPassword.value;
+  if (!email || !password) return;
+
+  const signingUp = authMode === 'signup';
+
+  authBtn.disabled  = true;
+  authBtn.textContent = signingUp ? 'Creating…' : 'Signing in…';
+  authNoteSay('');
+
+  const { data, error } = signingUp
+    ? await db.auth.signUp({ email, password })
+    : await db.auth.signInWithPassword({ email, password });
+
+  authBtn.disabled = false;
+  setAuthMode(authMode);            // puts the button label back
+
+  if (error) { authNoteSay(error.message); return; }
+
+  // If Supabase is set to confirm emails, signUp returns a user but no
+  // session — nothing more happens until they click the link.
+  if (signingUp && !data.session) {
+    authNoteSay(`Account made. Check ${email} to confirm it, then sign in.`, true);
+    setAuthMode('signin');
+    return;
+  }
+
+  // Otherwise onAuthStateChange takes it from here.
 }
 
 /* Supabase reports the existing session on startup, and start() below also
@@ -521,6 +562,7 @@ function onSignedOut() {
   setUpFor = null;
   user = null;
   projects = [];
+  authPassword.value = '';
   render();
 }
 
@@ -565,7 +607,11 @@ taskForm.addEventListener('submit', e => {
 
 $('authForm').addEventListener('submit', e => {
   e.preventDefault();
-  sendMagicLink($('authEmail').value.trim());
+  submitAuth();
+});
+
+authSwitch.addEventListener('click', () => {
+  setAuthMode(authMode === 'signin' ? 'signup' : 'signin');
 });
 
 $('signOutBtn').addEventListener('click', () => db.auth.signOut());

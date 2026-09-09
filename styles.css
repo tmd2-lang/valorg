@@ -630,3 +630,18 @@ button, input, textarea, select { font: inherit; color: inherit; }
   gap: 8px;
   flex: none;
 }
+
+/* Sign in / sign up toggle */
+.auth-switch {
+  margin-top: 18px;
+  padding: 4px;
+  background: none;
+  border: none;
+  color: var(--text-faint);
+  font-size: 13px;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  transition: color 0.15s;
+}
+.auth-switch:hover { color: var(--text); }

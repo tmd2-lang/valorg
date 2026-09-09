@@ -40,17 +40,21 @@
   <main class="page" id="authView" hidden>
     <section class="auth">
       <h1 class="auth-title">VALORG</h1>
-      <p class="auth-sub">Sign in to get to your projects.</p>
+      <p class="auth-sub" id="authSub">Sign in to get to your projects.</p>
 
       <form class="auth-form" id="authForm">
         <input class="input" id="authEmail" type="email" required
                placeholder="you@example.com" autocomplete="email" />
-        <button class="btn btn-primary" type="submit" id="authBtn">Email me a link</button>
+        <input class="input" id="authPassword" type="password" required minlength="8"
+               placeholder="Password" autocomplete="current-password" />
+        <button class="btn btn-primary" type="submit" id="authBtn">Sign in</button>
       </form>
 
-      <p class="auth-note" id="authNote">
-        No password. We email you a link, you click it, you're in.
-      </p>
+      <p class="auth-note" id="authNote" hidden></p>
+
+      <button class="auth-switch" id="authSwitch" type="button">
+        Need an account? Sign up
+      </button>
     </section>
   </main>
 
