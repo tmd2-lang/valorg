@@ -5,6 +5,10 @@
    ============================================================ */
 
 :root {
+  /* Tells the browser to draw native controls (checkboxes, the status
+     dropdown, scrollbars) in their dark variants instead of light. */
+  color-scheme: dark;
+
   /* Colors */
   --bg:          #0e0f13;
   --bg-raised:   #16181f;
@@ -357,4 +361,172 @@ button, input, textarea, select { font: inherit; color: inherit; }
   .count { display: none; }
   .grid { grid-template-columns: 1fr; }
   .empty { padding-top: 40px; }
+}
+
+/* ============ CARD: CLICKABLE ============ */
+
+.card { cursor: pointer; }
+.card:focus-visible {
+  outline: 2px solid var(--accent-dim);
+  outline-offset: 2px;
+}
+
+.card-tasks {
+  padding-left: 8px;
+  margin-left: 8px;
+  border-left: 1px solid var(--border);
+}
+
+/* ============ DETAIL VIEW ============ */
+
+.back {
+  display: inline-block;
+  margin-bottom: 24px;
+  color: var(--text-faint);
+  font-size: 13px;
+  text-decoration: none;
+  transition: color 0.15s;
+}
+.back:hover { color: var(--text); }
+
+.detail-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.detail-titles { min-width: 0; }
+
+.detail-name {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 600;
+  line-height: 1.2;
+  word-break: break-word;
+}
+
+.detail-note {
+  margin: 8px 0 0;
+  max-width: 60ch;
+  color: var(--text-dim);
+  font-size: 14px;
+  word-break: break-word;
+}
+
+.detail-tools {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+}
+
+/* Status pill */
+
+.pill {
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 12px;
+  text-transform: capitalize;
+  color: var(--text-dim);
+}
+.pill-idea   { color: var(--s-idea); }
+.pill-active { color: var(--s-active); border-color: color-mix(in srgb, var(--s-active) 30%, transparent); }
+.pill-paused { color: var(--s-paused); border-color: color-mix(in srgb, var(--s-paused) 30%, transparent); }
+.pill-done   { color: var(--s-done);   border-color: color-mix(in srgb, var(--s-done) 30%, transparent); }
+
+/* ============ TASKS ============ */
+
+.tasks { padding-top: 28px; }
+
+.tasks-head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.tasks-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.task-count {
+  font-size: 12px;
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.task-add {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 18px;
+  max-width: 620px;
+}
+.task-add .input { flex: 1; }
+
+.task-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-width: 620px;
+}
+
+.task {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border-radius: var(--radius-sm);
+  transition: background 0.12s;
+}
+.task:hover { background: var(--bg-raised); }
+
+.task-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+  cursor: pointer;
+}
+
+.task-box {
+  flex: none;
+  width: 15px;
+  height: 15px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.task-title {
+  font-size: 14px;
+  word-break: break-word;
+}
+
+.task-done .task-title {
+  color: var(--text-faint);
+  text-decoration: line-through;
+}
+
+/* Delete button on a task — hidden until hover, like the card tools */
+.task .icon-btn { opacity: 0; }
+.task:hover .icon-btn,
+.task:focus-within .icon-btn { opacity: 1; }
+@media (hover: none) {
+  .task .icon-btn { opacity: 1; }
+}
+
+.tasks-empty {
+  margin: 0;
+  padding: 4px 10px;
+  color: var(--text-faint);
+  font-size: 13px;
 }

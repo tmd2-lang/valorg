@@ -17,21 +17,32 @@ npx serve .
 
 | File | What's in it |
 |---|---|
-| `index.html` | Page structure — header, empty state, grid, add/edit dialog |
+| `index.html` | Page structure — header, list view, detail view, add/edit dialog |
 | `styles.css` | All styling. Colors and spacing live in the `:root` variables at the top |
-| `app.js` | State, localStorage persistence, and rendering |
+| `app.js` | State, localStorage persistence, routing, and rendering |
 
 ## How it works
 
-Three ideas, and they're worth internalizing because every UI framework is
+Four ideas, and they're worth internalizing because every UI framework is
 a fancier version of the same loop:
 
 1. **State** — `projects` is an array of objects. Single source of truth.
 2. **Storage** — that array is JSON'd into `localStorage` on every change.
-3. **Render** — `render()` redraws the grid from the array.
+3. **Router** — the URL hash decides which view is on screen.
+4. **Render** — `render()` redraws the screen from the array.
 
 The rule that keeps it from turning to spaghetti: **never poke the DOM to
 change data.** Change the array → `save()` → `render()`. Always that order.
+
+## Routes
+
+| URL | View |
+|---|---|
+| `#/` | All projects |
+| `#/p/<id>` | One project and its tasks |
+
+The hash is real navigation: deep links work, and so does the browser's
+back button.
 
 ## Data shape
 
@@ -41,9 +52,15 @@ change data.** Change the array → `save()` → `render()`. Always that order.
   name: "Valorg, Inc.",
   note: "One line so future-you remembers.",
   status: "idea" | "active" | "paused" | "done",
-  createdAt: 1757433600000
+  createdAt: 1757433600000,
+  tasks: [
+    { id: "uuid", title: "Order fabric samples", done: false, createdAt: 1757433600000 }
+  ]
 }
 ```
+
+When you add a field later, handle its absence in `load()` the way `tasks`
+is handled — data already saved in the browser won't have it.
 
 Data lives in your browser's localStorage — it's per-browser and per-device.
 Moving to a real shared database is the natural next step.
@@ -59,7 +76,9 @@ Static site, zero config. Or connect the GitHub repo at
 
 ## Next up
 
-- [ ] Click a project to open a detail view
-- [ ] Tasks nested inside each project
+- [x] Click a project to open a detail view
+- [x] Tasks nested inside each project
 - [ ] Search and filter by status
+- [ ] Due dates on tasks
+- [ ] Reorder projects by hand
 - [ ] Real database so it syncs across devices

@@ -29,17 +29,57 @@
   <!-- ============ MAIN ============ -->
   <main class="page">
 
-    <!-- Shown when there are zero projects -->
-    <section class="empty" id="empty" hidden>
-      <button class="empty-target" id="addBtnEmpty">
-        <span class="empty-plus">+</span>
-        <span class="empty-title">Add your first project</span>
-        <span class="empty-sub">Companies, side projects, anything you're building</span>
-      </button>
-    </section>
+    <!-- ---- LIST VIEW: all projects ---- -->
+    <div id="listView">
 
-    <!-- The grid of project cards -->
-    <section class="grid" id="grid"></section>
+      <!-- Shown when there are zero projects -->
+      <section class="empty" id="empty" hidden>
+        <button class="empty-target" id="addBtnEmpty">
+          <span class="empty-plus">+</span>
+          <span class="empty-title">Add your first project</span>
+          <span class="empty-sub">Companies, side projects, anything you're building</span>
+        </button>
+      </section>
+
+      <!-- The grid of project cards -->
+      <section class="grid" id="grid"></section>
+
+    </div>
+
+    <!-- ---- DETAIL VIEW: one project and its tasks ---- -->
+    <div id="detailView" hidden>
+
+      <a class="back" href="#/">&larr; All projects</a>
+
+      <header class="detail-head">
+        <div class="detail-titles">
+          <h1 class="detail-name" id="dName"></h1>
+          <p class="detail-note" id="dNote"></p>
+        </div>
+        <div class="detail-tools">
+          <span class="pill" id="dStatus"></span>
+          <button class="icon-btn" id="dEdit" type="button" title="Edit project" aria-label="Edit project">&#9998;</button>
+          <button class="icon-btn danger" id="dDelete" type="button" title="Delete project" aria-label="Delete project">&#10005;</button>
+        </div>
+      </header>
+
+      <section class="tasks">
+        <div class="tasks-head">
+          <h2 class="tasks-title">Tasks</h2>
+          <span class="task-count" id="taskCount"></span>
+        </div>
+
+        <form class="task-add" id="taskForm">
+          <input class="input" id="taskInput" type="text" placeholder="Add a task and press Enter"
+                 maxlength="200" autocomplete="off" />
+          <button class="btn btn-ghost" type="submit">Add</button>
+        </form>
+
+        <ul class="task-list" id="taskList"></ul>
+        <p class="tasks-empty" id="tasksEmpty" hidden>No tasks yet.</p>
+      </section>
+
+    </div>
 
   </main>
 
