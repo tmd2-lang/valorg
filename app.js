@@ -226,9 +226,12 @@ function renderDetail(p) {
     ? (open ? `${open} open · ${done} done` : `all ${p.tasks.length} done`)
     : '';
 
-  // Open tasks first, each group newest-first.
+  // Open tasks first, newest added at the top. Finished ones below,
+  // most recently finished first — so the last thing you ticked leads.
   const sorted = [...p.tasks].sort((a, b) =>
-    (a.done - b.done) || (b.createdAt - a.createdAt));
+    (a.done - b.done) ||
+    (a.done ? (b.completedAt ?? b.createdAt) - (a.completedAt ?? a.createdAt)
+            : b.createdAt - a.createdAt));
 
   taskList.replaceChildren();
   sorted.forEach(t => taskList.append(taskRow(p, t)));
@@ -292,8 +295,18 @@ function taskRow(project, task) {
 
   label.append(box, el('span', 'task-title', task.title));
 
+  // A done task shows when it was finished; an open one shows how long
+  // it has been sitting there. Hovering gives the exact dates for both.
+  const when = el('span', 'task-when', task.done
+    ? (task.completedAt ? `done ${ago(task.completedAt)}` : 'done')
+    : `added ${ago(task.createdAt)}`);
+
+  when.title = `Added ${fullDate(task.createdAt)}`
+    + (task.completedAt ? `\nDone  ${fullDate(task.completedAt)}` : '');
+
   li.append(
     label,
+    when,
     iconBtn('Delete task', '✕', () => removeTask(project.id, task.id), true)
   );
   return li;
@@ -319,6 +332,27 @@ function iconBtn(label, glyph, onClick, danger = false) {
 
 function formatDate(ts) {
   return new Date(ts).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+/** "just now", "20m ago", "3h ago", "2d ago", then falls back to a date. */
+function ago(ts) {
+  if (!ts) return '';
+  const seconds = (Date.now() - ts) / 1000;
+
+  if (seconds < 60)  return 'just now';
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60)  return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24)    return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 7)      return `${days}d ago`;
+
+  return formatDate(ts);
+}
+
+/** The full date and time, for the hover tooltip. */
+function fullDate(ts) {
+  return new Date(ts).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
 }
 
 
@@ -412,14 +446,20 @@ function addTask(projectId, title) {
   if (!p) return;
   saveTasks(projectId, [
     ...p.tasks,
-    { id: crypto.randomUUID(), title, done: false, createdAt: Date.now() },
+    { id: crypto.randomUUID(), title, done: false, createdAt: Date.now(), completedAt: null },
   ]);
 }
 
 function toggleTask(projectId, taskId) {
   const p = projects.find(x => x.id === projectId);
   if (!p) return;
-  saveTasks(projectId, p.tasks.map(t => t.id === taskId ? { ...t, done: !t.done } : t));
+
+  saveTasks(projectId, p.tasks.map(t => {
+    if (t.id !== taskId) return t;
+    const done = !t.done;
+    // Record when it was finished; drop that if it gets reopened.
+    return { ...t, done, completedAt: done ? Date.now() : null };
+  }));
 }
 
 function removeTask(projectId, taskId) {

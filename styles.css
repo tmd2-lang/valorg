@@ -645,3 +645,14 @@ button, input, textarea, select { font: inherit; color: inherit; }
   transition: color 0.15s;
 }
 .auth-switch:hover { color: var(--text); }
+
+/* Timestamp on each task row */
+.task-when {
+  flex: none;
+  color: var(--text-faint);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  cursor: default;
+}
+.task-done .task-when { color: var(--s-active); opacity: 0.65; }
