@@ -13,9 +13,15 @@
   <!-- ============ HEADER ============ -->
   <header class="topbar">
     <div class="topbar-inner">
-      <div class="brand">
-        <span class="brand-mark">◈</span>
-        <span class="brand-name">VALORG</span>
+      <div class="brand-group">
+        <a class="brand" href="#/">
+          <span class="brand-mark">◈</span>
+          <span class="brand-name">VALORG</span>
+        </a>
+        <nav class="nav" id="nav">
+          <a class="nav-link" href="#/"         data-route="home">Home</a>
+          <a class="nav-link" href="#/projects" data-route="projects">Projects</a>
+        </nav>
       </div>
       <div class="topbar-actions">
         <span class="count" id="count"></span>
@@ -70,6 +76,29 @@
       </span>
     </div>
 
+    <!-- ---- HOME: what needs doing, and what it's all for ---- -->
+    <div id="homeView" hidden>
+
+      <section class="block">
+        <div class="block-head">
+          <h2 class="block-title">Now</h2>
+          <span class="block-meta" id="nowMeta"></span>
+        </div>
+        <ul class="task-list" id="nowList"></ul>
+        <p class="block-empty" id="nowEmpty" hidden>
+          Nothing open. Open a project and add a task.
+        </p>
+      </section>
+
+      <section class="block">
+        <div class="block-head">
+          <h2 class="block-title">Goals</h2>
+        </div>
+        <ul class="goal-list" id="goalList"></ul>
+      </section>
+
+    </div>
+
     <!-- ---- LIST VIEW: all projects ---- -->
     <div id="listView">
 
@@ -88,7 +117,7 @@
     <!-- ---- DETAIL VIEW: one project and its tasks ---- -->
     <div id="detailView" hidden>
 
-      <a class="back" href="#/">&larr; All projects</a>
+      <a class="back" href="#/projects">&larr; All projects</a>
 
       <header class="detail-head">
         <div class="detail-titles">

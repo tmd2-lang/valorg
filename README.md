@@ -41,7 +41,8 @@ change data.** Change the array → `save()` → `render()`. Always that order.
 
 | URL | View |
 |---|---|
-| `#/` | All projects |
+| `#/` | Home — everything open, and the goals |
+| `#/projects` | All projects |
 | `#/p/<id>` | One project and its tasks |
 
 The hash is real navigation: deep links work, and so does the browser's
@@ -120,7 +121,7 @@ Static site, zero config. Or connect the GitHub repo at
 - [x] Tasks nested inside each project
 - [ ] Search and filter by status
 - [x] Due dates on tasks
-- [ ] Home dashboard: what's due, what you finished, the goals
+- [x] Home: what's open across every project, and the goals
 - [ ] A note captured at the moment you tick something off
 - [ ] "This week" summary on the dashboard
 - [ ] Reorder projects by hand

@@ -48,8 +48,14 @@ const authView = $('authView');
 const appView  = $('appView');
 const banner   = $('banner');
 
+const homeView   = $('homeView');
 const listView   = $('listView');
 const detailView = $('detailView');
+const nav        = $('nav');
+const nowList    = $('nowList');
+const nowMeta    = $('nowMeta');
+const nowEmpty   = $('nowEmpty');
+const goalList   = $('goalList');
 const grid       = $('grid');
 const empty      = $('empty');
 const countEl    = $('count');
@@ -167,13 +173,16 @@ async function push(work) {
 
 /* ---------- 3. ROUTER ---------- */
 
-/* Two routes:
-     #/           the list of all projects
+/* Three routes:
+     #/           home — what needs doing, and the goals
+     #/projects   the list of all projects
      #/p/<id>     one project's detail page */
 
 function currentRoute() {
   const match = location.hash.match(/^#\/p\/(.+)$/);
-  return match ? { view: 'detail', id: match[1] } : { view: 'list' };
+  if (match) return { view: 'detail', id: match[1] };
+  if (location.hash === '#/projects') return { view: 'list' };
+  return { view: 'home' };
 }
 
 function go(hash) {
@@ -210,17 +219,84 @@ function render() {
     ? projects.find(p => p.id === route.id)
     : null;
 
-  // A link to a project that's gone falls back to the list.
+  // A link to a project that's gone falls back to home.
   if (route.view === 'detail' && !project) return go('#/');
 
-  const onDetail = Boolean(project);
-  listView.hidden   = onDetail;
-  detailView.hidden = !onDetail;
-  addBtnTop.hidden  = onDetail;   // "Add project" belongs to the list view
-  countEl.hidden    = onDetail;
+  const view = project ? 'detail' : route.view;
 
-  if (onDetail) renderDetail(project);
-  else renderList();
+  homeView.hidden   = view !== 'home';
+  listView.hidden   = view !== 'list';
+  detailView.hidden = view !== 'detail';
+
+  nav.hidden       = false;
+  addBtnTop.hidden = view === 'detail';   // adding a project makes no sense inside one
+  countEl.hidden   = view !== 'list';
+
+  // Underline whichever nav item you're on. A project page counts as Projects.
+  nav.querySelectorAll('.nav-link').forEach(a => {
+    const here = a.dataset.route === (view === 'home' ? 'home' : 'projects');
+    a.classList.toggle('nav-here', here);
+  });
+
+  if (view === 'detail')    renderDetail(project);
+  else if (view === 'list') renderList();
+  else                      renderHome();
+}
+
+
+/* ---------- HOME ---------- */
+
+/* Every open task in one place, most urgent first. This is the only view
+   that crosses project boundaries, and it's the one that answers "what
+   should I be doing right now". */
+
+function renderHome() {
+  const open = [];
+  projects.forEach(p => p.tasks.forEach(t => { if (!t.done) open.push({ project: p, task: t }); }));
+
+  open.sort((a, b) => {
+    // Anything with a date outranks anything without one.
+    if (a.task.due && !b.task.due) return -1;
+    if (!a.task.due && b.task.due) return 1;
+    if (a.task.due && b.task.due) return a.task.due < b.task.due ? -1 : a.task.due > b.task.due ? 1 : 0;
+    return b.task.createdAt - a.task.createdAt;   // undated: newest first
+  });
+
+  const late = open.filter(o => o.task.due && daysUntil(o.task.due) < 0).length;
+  nowMeta.textContent = open.length
+    ? `${open.length} open${late ? ` · ${late} late` : ''}`
+    : '';
+
+  nowList.replaceChildren();
+  open.forEach(o => nowList.append(taskRow(o.project, o.task, { showProject: true })));
+  nowEmpty.hidden = open.length > 0;
+
+  // The mirror: every goal in one place.
+  goalList.replaceChildren();
+  [...projects]
+    .sort((a, b) => b.createdAt - a.createdAt)
+    .forEach(p => goalList.append(goalRow(p)));
+}
+
+function goalRow(p) {
+  const li = el('li', 'goal-row');
+
+  const link = el('a', 'goal-row-name', p.name);
+  link.href = `#/p/${p.id}`;
+  link.addEventListener('click', e => { e.preventDefault(); go(`#/p/${p.id}`); });
+
+  li.append(link);
+
+  if (p.goal) {
+    li.append(el('span', 'goal-row-text', p.goal));
+  } else {
+    const prompt = el('button', 'goal-row-unset', 'Set a goal');
+    prompt.type = 'button';
+    prompt.addEventListener('click', () => openDialog(p.id));
+    li.append(prompt);
+  }
+
+  return li;
 }
 
 function renderList() {
@@ -310,7 +386,7 @@ function cardFor(p) {
   return card;
 }
 
-function taskRow(project, task) {
+function taskRow(project, task, opts = {}) {
   const li = el('li', 'task' + (task.done ? ' task-done' : ''));
 
   const label = el('label', 'task-label');
@@ -328,6 +404,15 @@ function taskRow(project, task) {
 
   label.append(box);
   li.append(label, title);
+
+  // On home, say which project a task came from — otherwise the list is
+  // a pile of sentences with no idea where they belong.
+  if (opts.showProject) {
+    const tag = el('a', 'task-project', project.name);
+    tag.href = `#/p/${project.id}`;
+    tag.addEventListener('click', e => { e.preventDefault(); go(`#/p/${project.id}`); });
+    li.append(tag);
+  }
 
   if (task.notes) {
     const mark = el('span', 'task-hasnotes', '✎');
@@ -795,7 +880,15 @@ dialog.addEventListener('close', () => { editingId = null; });
 // but navigates through go(), which renders immediately.
 document.querySelector('.back').addEventListener('click', e => {
   e.preventDefault();
-  go('#/');
+  go('#/projects');
+});
+
+// Header nav and the wordmark.
+document.querySelectorAll('.nav-link, .brand').forEach(a => {
+  a.addEventListener('click', e => {
+    e.preventDefault();
+    go(new URL(a.href).hash || '#/');
+  });
 });
 
 $('dEdit').addEventListener('click',   () => openDialog(currentRoute().id));
@@ -837,7 +930,7 @@ $('importNo').addEventListener('click',  () => { importBar.hidden = true; });
 document.addEventListener('keydown', e => {
   const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName);
   if (e.key === 'n' && !typing && !dialog.open && !taskDialog.open && !e.metaKey && !e.ctrlKey
-      && user && currentRoute().view === 'list') {
+      && user && currentRoute().view !== 'detail') {
     e.preventDefault();
     openDialog();
   }
