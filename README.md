@@ -22,6 +22,7 @@ npx serve .
 | `app.js` | State, database calls, routing, and rendering |
 | `config.js` | Supabase project URL and public key |
 | `supabase-setup.sql` | Run once in Supabase to create the table |
+| `supabase-add-goal.sql` | Migration: adds the goal column to an existing table |
 
 ## How it works
 
@@ -52,6 +53,7 @@ back button.
 {
   id: "uuid",
   name: "Valorg, Inc.",
+  goal: "Make this a $10M ARR company.",
   note: "One line so future-you remembers.",
   status: "idea" | "active" | "paused" | "done",
   createdAt: 1757433600000,
@@ -118,5 +120,8 @@ Static site, zero config. Or connect the GitHub repo at
 - [x] Tasks nested inside each project
 - [ ] Search and filter by status
 - [x] Due dates on tasks
+- [ ] Home dashboard: what's due, what you finished, the goals
+- [ ] A note captured at the moment you tick something off
+- [ ] "This week" summary on the dashboard
 - [ ] Reorder projects by hand
 - [ ] Real database so it syncs across devices

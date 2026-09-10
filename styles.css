@@ -725,3 +725,53 @@ button, input, textarea, select { font: inherit; color: inherit; }
 
 .hist-what { color: var(--text-dim); }
 .hist-when { margin-left: auto; color: var(--text-faint); font-variant-numeric: tabular-nums; }
+
+/* ============ PROJECT GOAL ============ */
+
+/* The sticky-note-on-the-mirror. Deliberately hard to skip past: it sits
+   between the project title and the work, and it's the only accented
+   text on the page. */
+.goal {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  margin: 24px 0 0;
+  padding: 16px 18px;
+  background: color-mix(in srgb, var(--accent) 7%, var(--bg-raised));
+  border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent);
+  border-left: 2px solid var(--accent);
+  border-radius: var(--radius-sm);
+}
+
+.goal-label {
+  flex: none;
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.goal-text {
+  font-size: 15px;
+  line-height: 1.45;
+  color: var(--text);
+}
+
+/* On a card, the goal replaces the description line. */
+.card-goal {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: color-mix(in srgb, var(--accent) 65%, var(--text));
+  word-break: break-word;
+}
+
+/* Hint text under a dialog field */
+.field-hint {
+  display: block;
+  margin-top: 6px;
+  color: var(--text-faint);
+  font-size: 12px;
+  line-height: 1.4;
+}

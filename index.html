@@ -102,6 +102,11 @@
         </div>
       </header>
 
+      <blockquote class="goal" id="dGoal" hidden>
+        <span class="goal-label">Goal</span>
+        <span class="goal-text" id="dGoalText"></span>
+      </blockquote>
+
       <section class="tasks">
         <div class="tasks-head">
           <h2 class="tasks-title">Tasks</h2>
@@ -134,8 +139,15 @@
       </label>
 
       <label class="field">
+        <span class="field-label">Goal <span class="opt">optional</span></span>
+        <input class="input" id="fGoal" name="goal" type="text" maxlength="140"
+               placeholder="Make this a $10M ARR company." autocomplete="off" />
+        <span class="field-hint">One line. Where is this going? You'll see it every time you open the project.</span>
+      </label>
+
+      <label class="field">
         <span class="field-label">What is it? <span class="opt">optional</span></span>
-        <textarea class="input textarea" id="fNote" name="note" rows="3"
+        <textarea class="input textarea" id="fNote" name="note" rows="2"
                   placeholder="One line so future-you remembers." maxlength="280"></textarea>
       </label>
 

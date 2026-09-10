@@ -57,8 +57,10 @@ const addBtnTop  = $('addBtnTop');
 const account      = $('account');
 const accountEmail = $('accountEmail');
 
-const dName    = $('dName');
-const dNote    = $('dNote');
+const dName     = $('dName');
+const dNote     = $('dNote');
+const dGoal     = $('dGoal');
+const dGoalText = $('dGoalText');
 const dStatus  = $('dStatus');
 const taskList = $('taskList');
 const taskForm = $('taskForm');
@@ -71,6 +73,7 @@ const form        = $('form');
 const dialogTitle = $('dialogTitle');
 const saveBtn     = $('saveBtn');
 const fName       = $('fName');
+const fGoal       = $('fGoal');
 const fNote       = $('fNote');
 const fStatus     = $('fStatus');
 
@@ -105,6 +108,7 @@ function fromRow(row) {
   return {
     id:        row.id,
     name:      row.name,
+    goal:      row.goal ?? '',
     note:      row.note ?? '',
     status:    row.status,
     tasks:     (Array.isArray(row.tasks) ? row.tasks : []).map(fillInTask),
@@ -236,6 +240,9 @@ function renderDetail(p) {
   dNote.textContent = p.note;
   dNote.hidden      = !p.note;
 
+  dGoalText.textContent = p.goal;
+  dGoal.hidden          = !p.goal;
+
   dStatus.textContent = p.status;
   dStatus.className   = `pill pill-${p.status}`;
 
@@ -286,7 +293,8 @@ function cardFor(p) {
   head.append(name, tools);
   card.append(head);
 
-  if (p.note) card.append(el('p', 'card-note', p.note));
+  if (p.goal)      card.append(el('p', 'card-goal', p.goal));
+  else if (p.note) card.append(el('p', 'card-note', p.note));
 
   const openCount = p.tasks.filter(t => !t.done).length;
 
@@ -435,6 +443,7 @@ function openDialog(id = null) {
     dialogTitle.textContent = 'Edit project';
     saveBtn.textContent     = 'Save';
     fName.value   = p.name;
+    fGoal.value   = p.goal;
     fNote.value   = p.note;
     fStatus.value = p.status;
   } else {
@@ -454,6 +463,7 @@ async function submitProject() {
 
   const fields = {
     name,
+    goal:   fGoal.value.trim(),
     note:   fNote.value.trim(),
     status: fStatus.value,
   };
@@ -770,6 +780,9 @@ form.addEventListener('submit', submitProject);
 
 // Enter submits from the name field; Cmd/Ctrl+Enter submits from the textarea.
 fName.addEventListener('keydown', e => {
+  if (e.key === 'Enter') { e.preventDefault(); form.requestSubmit(); }
+});
+fGoal.addEventListener('keydown', e => {
   if (e.key === 'Enter') { e.preventDefault(); form.requestSubmit(); }
 });
 fNote.addEventListener('keydown', e => {

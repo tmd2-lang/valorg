@@ -16,6 +16,11 @@ create table if not exists projects (
              references auth.users on delete cascade,
 
   name       text not null,
+
+  -- The one line that says where this is going. Shown prominently, on
+  -- purpose — it is meant to be hard to ignore.
+  goal       text not null default '',
+
   note       text not null default '',
   status     text not null default 'active',
 
