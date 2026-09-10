@@ -56,7 +56,20 @@ back button.
   status: "idea" | "active" | "paused" | "done",
   createdAt: 1757433600000,
   tasks: [
-    { id: "uuid", title: "Order fabric samples", done: false, createdAt: 1757433600000 }
+    {
+      id: "uuid",
+      title: "Order fabric samples",
+      done: false,
+      createdAt: 1757433600000,
+      completedAt: null,          // when it was last ticked off
+      due: "2026-09-14",          // a calendar day, or null
+      notes: "",
+      events: [                   // the full history, appended to
+        { type: "created",   at: 1757433600000 },
+        { type: "completed", at: 1757440000000 },
+        { type: "reopened",  at: 1757450000000 }
+      ]
+    }
   ]
 }
 ```
@@ -104,6 +117,6 @@ Static site, zero config. Or connect the GitHub repo at
 - [x] Click a project to open a detail view
 - [x] Tasks nested inside each project
 - [ ] Search and filter by status
-- [ ] Due dates on tasks
+- [x] Due dates on tasks
 - [ ] Reorder projects by hand
 - [ ] Real database so it syncs across devices

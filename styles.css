@@ -492,9 +492,7 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .task-label {
   display: flex;
   align-items: center;
-  gap: 10px;
-  flex: 1;
-  min-width: 0;
+  flex: none;
   cursor: pointer;
 }
 
@@ -507,9 +505,18 @@ button, input, textarea, select { font: inherit; color: inherit; }
 }
 
 .task-title {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  background: none;
+  border: none;
   font-size: 14px;
+  text-align: left;
   word-break: break-word;
+  cursor: pointer;
+  border-bottom: 1px solid transparent;
 }
+.task-title:hover { border-bottom-color: var(--border); }
 
 .task-done .task-title {
   color: var(--text-faint);
@@ -656,3 +663,65 @@ button, input, textarea, select { font: inherit; color: inherit; }
   cursor: default;
 }
 .task-done .task-when { color: var(--s-active); opacity: 0.65; }
+
+/* ============ TASK EXTRAS ============ */
+
+.task-hasnotes {
+  flex: none;
+  color: var(--text-faint);
+  font-size: 12px;
+  cursor: default;
+}
+
+/* Due date badge */
+
+.due {
+  flex: none;
+  padding: 2px 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text-dim);
+  font-size: 11px;
+  white-space: nowrap;
+  cursor: default;
+}
+.due-soon  { color: var(--s-paused); border-color: color-mix(in srgb, var(--s-paused) 35%, transparent); }
+.due-today { color: var(--s-paused); border-color: color-mix(in srgb, var(--s-paused) 55%, transparent); }
+.due-late  { color: #f87171;         border-color: color-mix(in srgb, #f87171 45%, transparent); }
+
+.task-done .due { opacity: 0.45; }
+
+/* ============ HISTORY LIST ============ */
+
+.history {
+  list-style: none;
+  margin: 0;
+  padding: 10px 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  max-height: 160px;
+  overflow-y: auto;
+}
+
+.hist {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 4px 0;
+  font-size: 12px;
+}
+
+.hist-dot {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text-faint);
+}
+.hist-created   .hist-dot { background: var(--s-idea); }
+.hist-completed .hist-dot { background: var(--s-active); }
+.hist-reopened  .hist-dot { background: var(--s-paused); }
+
+.hist-what { color: var(--text-dim); }
+.hist-when { margin-left: auto; color: var(--text-faint); font-variant-numeric: tabular-nums; }

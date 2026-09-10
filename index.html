@@ -156,6 +156,39 @@
     </form>
   </dialog>
 
+  <!-- ============ TASK DIALOG ============ -->
+  <dialog class="dialog" id="taskDialog">
+    <form method="dialog" id="taskEditForm">
+      <h2 class="dialog-title">Task</h2>
+
+      <label class="field">
+        <span class="field-label">Task</span>
+        <input class="input" id="tTitle" type="text" maxlength="200" required autocomplete="off" />
+      </label>
+
+      <label class="field">
+        <span class="field-label">Due <span class="opt">optional</span></span>
+        <input class="input" id="tDue" type="date" />
+      </label>
+
+      <label class="field">
+        <span class="field-label">Notes <span class="opt">optional</span></span>
+        <textarea class="input textarea" id="tNotes" rows="4"
+                  placeholder="Anything worth remembering about this one." maxlength="2000"></textarea>
+      </label>
+
+      <div class="field">
+        <span class="field-label">History</span>
+        <ol class="history" id="tHistory"></ol>
+      </div>
+
+      <div class="dialog-actions">
+        <button class="btn btn-ghost" type="button" id="tCancel">Cancel</button>
+        <button class="btn btn-primary" type="submit">Save</button>
+      </div>
+    </form>
+  </dialog>
+
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
   <script src="config.js"></script>
   <script src="app.js"></script>

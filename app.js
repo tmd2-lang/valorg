@@ -107,8 +107,28 @@ function fromRow(row) {
     name:      row.name,
     note:      row.note ?? '',
     status:    row.status,
-    tasks:     Array.isArray(row.tasks) ? row.tasks : [],
+    tasks:     (Array.isArray(row.tasks) ? row.tasks : []).map(fillInTask),
     createdAt: new Date(row.created_at).getTime(),
+  };
+}
+
+/* Tasks saved before notes, due dates and history existed are missing those
+   fields. Rather than rewrite old rows, fill the gaps on the way in — and
+   build a history for them out of what we do know. */
+function fillInTask(t) {
+  let events = Array.isArray(t.events) ? t.events : null;
+
+  if (!events) {
+    events = [{ type: 'created', at: t.createdAt }];
+    if (t.done && t.completedAt) events.push({ type: 'completed', at: t.completedAt });
+  }
+
+  return {
+    completedAt: null,
+    due:   null,
+    notes: '',
+    ...t,
+    events,
   };
 }
 
@@ -293,7 +313,21 @@ function taskRow(project, task) {
   box.checked = task.done;
   box.addEventListener('change', () => toggleTask(project.id, task.id));
 
-  label.append(box, el('span', 'task-title', task.title));
+  // The title opens the task; the checkbox next to it does not.
+  const title = el('button', 'task-title', task.title);
+  title.type = 'button';
+  title.addEventListener('click', () => openTaskDialog(project.id, task.id));
+
+  label.append(box);
+  li.append(label, title);
+
+  if (task.notes) {
+    const mark = el('span', 'task-hasnotes', '✎');
+    mark.title = 'Has notes';
+    li.append(mark);
+  }
+
+  if (task.due) li.append(dueBadge(task.due, task.done));
 
   // A done task shows when it was finished; an open one shows how long
   // it has been sitting there. Hovering gives the exact dates for both.
@@ -305,11 +339,45 @@ function taskRow(project, task) {
     + (task.completedAt ? `\nDone  ${fullDate(task.completedAt)}` : '');
 
   li.append(
-    label,
     when,
     iconBtn('Delete task', '✕', () => removeTask(project.id, task.id), true)
   );
   return li;
+}
+
+/* Due dates are stored as plain 'YYYY-MM-DD' — a calendar day, not a moment
+   in time, so it can't drift across timezones. */
+
+function dueBadge(due, done) {
+  const days = daysUntil(due);
+
+  let text = dueLabel(due, days);
+  let tone = '';
+  if (!done) {
+    if (days < 0)       tone = ' due-late';
+    else if (days === 0) tone = ' due-today';
+    else if (days <= 3)  tone = ' due-soon';
+  }
+
+  const badge = el('span', 'due' + tone, text);
+  badge.title = `Due ${new Date(due + 'T00:00').toLocaleDateString(undefined, { dateStyle: 'full' })}`;
+  return badge;
+}
+
+function dueLabel(due, days) {
+  if (days === 0)  return 'due today';
+  if (days === 1)  return 'due tomorrow';
+  if (days === -1) return '1 day late';
+  if (days < 0)    return `${-days} days late`;
+  if (days <= 6)   return `due in ${days}d`;
+  return 'due ' + new Date(due + 'T00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+function daysUntil(due) {
+  const target = new Date(due + 'T00:00');
+  const today  = new Date();
+  today.setHours(0, 0, 0, 0);
+  return Math.round((target - today) / 86400000);
 }
 
 /* Small DOM helpers — these just save repetition above. */
@@ -444,9 +512,19 @@ async function saveTasks(projectId, tasks) {
 function addTask(projectId, title) {
   const p = projects.find(x => x.id === projectId);
   if (!p) return;
+  const now = Date.now();
   saveTasks(projectId, [
     ...p.tasks,
-    { id: crypto.randomUUID(), title, done: false, createdAt: Date.now(), completedAt: null },
+    {
+      id: crypto.randomUUID(),
+      title,
+      done: false,
+      createdAt: now,
+      completedAt: null,
+      due: null,
+      notes: '',
+      events: [{ type: 'created', at: now }],
+    },
   ]);
 }
 
@@ -454,11 +532,19 @@ function toggleTask(projectId, taskId) {
   const p = projects.find(x => x.id === projectId);
   if (!p) return;
 
+  const at = Date.now();
+
   saveTasks(projectId, p.tasks.map(t => {
     if (t.id !== taskId) return t;
     const done = !t.done;
-    // Record when it was finished; drop that if it gets reopened.
-    return { ...t, done, completedAt: done ? Date.now() : null };
+    return {
+      ...t,
+      done,
+      // completedAt is "when it was last finished" and drives sorting;
+      // events keeps the full story, reopenings included.
+      completedAt: done ? at : null,
+      events: [...t.events, { type: done ? 'completed' : 'reopened', at }],
+    };
   }));
 }
 
@@ -466,6 +552,72 @@ function removeTask(projectId, taskId) {
   const p = projects.find(x => x.id === projectId);
   if (!p) return;
   saveTasks(projectId, p.tasks.filter(t => t.id !== taskId));
+}
+
+
+/* ---------- THE TASK DIALOG ---------- */
+
+const taskDialog = $('taskDialog');
+const tTitle   = $('tTitle');
+const tDue     = $('tDue');
+const tNotes   = $('tNotes');
+const tHistory = $('tHistory');
+
+// Which task the dialog is currently showing.
+let openTask = { projectId: null, taskId: null };
+
+function openTaskDialog(projectId, taskId) {
+  const p = projects.find(x => x.id === projectId);
+  const t = p?.tasks.find(x => x.id === taskId);
+  if (!t) return;
+
+  openTask = { projectId, taskId };
+
+  tTitle.value = t.title;
+  tDue.value   = t.due ?? '';
+  tNotes.value = t.notes ?? '';
+
+  renderHistory(t);
+  taskDialog.showModal();
+  tTitle.focus();
+}
+
+function renderHistory(task) {
+  const wording = {
+    created:   'Added',
+    completed: 'Completed',
+    reopened:  'Reopened',
+  };
+
+  // Newest at the top — the recent story is usually the one you want.
+  const events = [...task.events].sort((a, b) => b.at - a.at);
+
+  tHistory.replaceChildren();
+  events.forEach(e => {
+    const li = el('li', `hist hist-${e.type}`);
+    li.append(
+      el('span', 'hist-dot'),
+      el('span', 'hist-what', wording[e.type] ?? e.type),
+      el('span', 'hist-when', fullDate(e.at))
+    );
+    tHistory.append(li);
+  });
+}
+
+function saveTaskDialog() {
+  const { projectId, taskId } = openTask;
+  const p = projects.find(x => x.id === projectId);
+  if (!p) return;
+
+  const title = tTitle.value.trim();
+  if (!title) return;
+
+  saveTasks(projectId, p.tasks.map(t => t.id !== taskId ? t : {
+    ...t,
+    title,
+    due:   tDue.value || null,
+    notes: tNotes.value.trim(),
+  }));
 }
 
 
@@ -645,6 +797,15 @@ taskForm.addEventListener('submit', e => {
   taskInput.focus();
 });
 
+taskDialog.addEventListener('close', () => { openTask = { projectId: null, taskId: null }; });
+$('taskEditForm').addEventListener('submit', saveTaskDialog);
+$('tCancel').addEventListener('click', () => taskDialog.close());
+
+// Enter in the task title saves; the notes box keeps Enter for new lines.
+tTitle.addEventListener('keydown', e => {
+  if (e.key === 'Enter') { e.preventDefault(); $('taskEditForm').requestSubmit(); }
+});
+
 $('authForm').addEventListener('submit', e => {
   e.preventDefault();
   submitAuth();
@@ -662,7 +823,7 @@ $('importNo').addEventListener('click',  () => { importBar.hidden = true; });
 // Keyboard shortcut: "n" for new project (list view only).
 document.addEventListener('keydown', e => {
   const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName);
-  if (e.key === 'n' && !typing && !dialog.open && !e.metaKey && !e.ctrlKey
+  if (e.key === 'n' && !typing && !dialog.open && !taskDialog.open && !e.metaKey && !e.ctrlKey
       && user && currentRoute().view === 'list') {
     e.preventDefault();
     openDialog();
