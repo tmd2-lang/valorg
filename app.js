@@ -35,6 +35,9 @@ const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
  */
 let projects = [];
 
+/** @type {Array<{id:string, text:string, createdAt:number}>} */
+let ideas = [];
+
 let user = null;          // the signed-in account, or null
 let editingId = null;     // project being edited in the dialog, or null
 
@@ -49,6 +52,7 @@ const appView  = $('appView');
 const banner   = $('banner');
 
 const homeView   = $('homeView');
+const ideasView  = $('ideasView');
 const listView   = $('listView');
 const detailView = $('detailView');
 const nav        = $('nav');
@@ -56,6 +60,10 @@ const nowList    = $('nowList');
 const nowMeta    = $('nowMeta');
 const nowEmpty   = $('nowEmpty');
 const goalList   = $('goalList');
+const ideaList   = $('ideaList');
+const ideaMeta   = $('ideaMeta');
+const ideaEmpty  = $('ideaEmpty');
+const ideaInput  = $('ideaInput');
 const grid       = $('grid');
 const empty      = $('empty');
 const countEl    = $('count');
@@ -157,6 +165,21 @@ async function loadProjects() {
   return true;
 }
 
+async function loadIdeas() {
+  const { data, error } = await db
+    .from('ideas')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    say(`Could not load your ideas: ${error.message}`, 'error');
+    return false;
+  }
+
+  ideas = data.map(r => ({ id: r.id, text: r.text, createdAt: new Date(r.created_at).getTime() }));
+  return true;
+}
+
 /* Every write goes through here. It runs the database call, and if the call
    fails it pulls the real data back down so the screen can't keep showing a
    change that never actually saved. */
@@ -165,7 +188,7 @@ async function push(work) {
   if (!error) return true;
 
   say(`Not saved: ${error.message}`, 'error');
-  await loadProjects();
+  await Promise.all([loadProjects(), loadIdeas()]);
   render();
   return false;
 }
@@ -182,6 +205,7 @@ function currentRoute() {
   const match = location.hash.match(/^#\/p\/(.+)$/);
   if (match) return { view: 'detail', id: match[1] };
   if (location.hash === '#/projects') return { view: 'list' };
+  if (location.hash === '#/ideas')    return { view: 'ideas' };
   return { view: 'home' };
 }
 
@@ -225,22 +249,134 @@ function render() {
   const view = project ? 'detail' : route.view;
 
   homeView.hidden   = view !== 'home';
+  ideasView.hidden  = view !== 'ideas';
   listView.hidden   = view !== 'list';
   detailView.hidden = view !== 'detail';
 
   nav.hidden       = false;
-  addBtnTop.hidden = view === 'detail';   // adding a project makes no sense inside one
+  addBtnTop.hidden = view !== 'list' && view !== 'home';
   countEl.hidden   = view !== 'list';
 
   // Underline whichever nav item you're on. A project page counts as Projects.
+  const navFor = { home: 'home', ideas: 'ideas', list: 'projects', detail: 'projects' }[view];
   nav.querySelectorAll('.nav-link').forEach(a => {
-    const here = a.dataset.route === (view === 'home' ? 'home' : 'projects');
-    a.classList.toggle('nav-here', here);
+    a.classList.toggle('nav-here', a.dataset.route === navFor);
   });
 
-  if (view === 'detail')    renderDetail(project);
-  else if (view === 'list') renderList();
-  else                      renderHome();
+  if (view === 'detail')     renderDetail(project);
+  else if (view === 'list')  renderList();
+  else if (view === 'ideas') renderIdeas();
+  else                       renderHome();
+}
+
+
+/* ---------- IDEAS ---------- */
+
+function renderIdeas() {
+  ideaMeta.textContent = ideas.length
+    ? `${ideas.length} idea${ideas.length === 1 ? '' : 's'}`
+    : '';
+
+  ideaList.replaceChildren();
+  [...ideas]
+    .sort((a, b) => b.createdAt - a.createdAt)
+    .forEach(i => ideaList.append(ideaRow(i)));
+
+  ideaEmpty.hidden = ideas.length > 0;
+}
+
+function ideaRow(idea) {
+  const li = el('li', 'idea');
+
+  li.append(el('span', 'idea-text', idea.text));
+
+  const when = el('span', 'idea-when', ago(idea.createdAt));
+  when.title = fullDate(idea.createdAt);
+  li.append(when);
+
+  const tools = el('div', 'idea-tools');
+
+  const toTask = el('button', 'btn btn-ghost btn-sm', '→ Task');
+  toTask.type = 'button';
+  toTask.title = 'Turn this into a task in a project';
+  toTask.addEventListener('click', () => openConvert(idea.id));
+
+  tools.append(toTask, iconBtn('Delete idea', '✕', () => removeIdea(idea.id), true));
+  li.append(tools);
+
+  return li;
+}
+
+async function addIdea(text) {
+  const { data, error } = await db.from('ideas').insert({ text }).select().single();
+  if (error) { say(`Could not save: ${error.message}`, 'error'); return; }
+
+  ideas.push({ id: data.id, text: data.text, createdAt: new Date(data.created_at).getTime() });
+  render();
+}
+
+async function removeIdea(id) {
+  const idea = ideas.find(i => i.id === id);
+  if (!idea) return;
+  if (!confirm(`Delete "${idea.text}"?`)) return;
+
+  ideas = ideas.filter(i => i.id !== id);
+  render();
+  await push(() => db.from('ideas').delete().eq('id', id));
+}
+
+
+/* ---------- IDEA -> TASK ---------- */
+
+const convertDialog  = $('convertDialog');
+const convertText    = $('convertText');
+const convertProject = $('convertProject');
+
+let convertingId = null;
+
+function openConvert(ideaId) {
+  const idea = ideas.find(i => i.id === ideaId);
+  if (!idea) return;
+
+  if (!projects.length) {
+    say('Make a project first — a task needs somewhere to live.', 'error');
+    return;
+  }
+
+  convertingId = ideaId;
+  convertText.textContent = idea.text;
+
+  convertProject.replaceChildren();
+  [...projects]
+    .sort((a, b) => b.createdAt - a.createdAt)
+    .forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = p.id;
+      opt.textContent = p.name;
+      convertProject.append(opt);
+    });
+
+  convertDialog.showModal();
+}
+
+/* The idea becomes a task and stops being an idea. Keeping both would
+   mean two lists that quietly disagree with each other. */
+async function convertIdea() {
+  const idea = ideas.find(i => i.id === convertingId);
+  const projectId = convertProject.value;
+  convertingId = null;
+  if (!idea || !projectId) return;
+
+  addTask(projectId, idea.text);
+
+  ideas = ideas.filter(i => i.id !== idea.id);
+  render();
+
+  const ok = await push(() => db.from('ideas').delete().eq('id', idea.id));
+  if (ok) {
+    const p = projects.find(x => x.id === projectId);
+    say(`Added to ${p?.name ?? 'the project'}.`);
+  }
 }
 
 
@@ -840,7 +976,7 @@ async function onSignedIn(session) {
   setUpFor = session.user.id;
 
   user = session.user;
-  await loadProjects();
+  await Promise.all([loadProjects(), loadIdeas()]);
   offerImport();
   render();
 }
@@ -849,6 +985,7 @@ function onSignedOut() {
   setUpFor = null;
   user = null;
   projects = [];
+  ideas = [];
   authPassword.value = '';
   render();
 }
@@ -911,6 +1048,19 @@ $('tCancel').addEventListener('click', () => taskDialog.close());
 tTitle.addEventListener('keydown', e => {
   if (e.key === 'Enter') { e.preventDefault(); $('taskEditForm').requestSubmit(); }
 });
+
+$('ideaForm').addEventListener('submit', e => {
+  e.preventDefault();
+  const text = ideaInput.value.trim();
+  if (!text) return;
+  addIdea(text);
+  ideaInput.value = '';
+  ideaInput.focus();
+});
+
+$('convertForm').addEventListener('submit', convertIdea);
+$('convertCancel').addEventListener('click', () => convertDialog.close());
+convertDialog.addEventListener('close', () => { convertingId = null; });
 
 $('authForm').addEventListener('submit', e => {
   e.preventDefault();

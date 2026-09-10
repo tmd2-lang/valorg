@@ -21,6 +21,7 @@
         <nav class="nav" id="nav">
           <a class="nav-link" href="#/"         data-route="home">Home</a>
           <a class="nav-link" href="#/projects" data-route="projects">Projects</a>
+          <a class="nav-link" href="#/ideas"    data-route="ideas">Ideas</a>
         </nav>
       </div>
       <div class="topbar-actions">
@@ -114,6 +115,29 @@
 
     </div>
 
+    <!-- ---- IDEAS: the box you throw things in before you know what they are ---- -->
+    <div id="ideasView" hidden>
+
+      <section class="block">
+        <div class="block-head">
+          <h2 class="block-title">Idea box</h2>
+          <span class="block-meta" id="ideaMeta"></span>
+        </div>
+
+        <form class="idea-add" id="ideaForm">
+          <input class="input" id="ideaInput" type="text" maxlength="400" autocomplete="off"
+                 placeholder="What's the idea?" />
+          <button class="btn btn-ghost" type="submit">Add</button>
+        </form>
+
+        <ul class="idea-list" id="ideaList"></ul>
+        <p class="block-empty" id="ideaEmpty" hidden>
+          Nothing yet. Throw anything in here — it doesn't have to be a good idea.
+        </p>
+      </section>
+
+    </div>
+
     <!-- ---- DETAIL VIEW: one project and its tasks ---- -->
     <div id="detailView" hidden>
 
@@ -193,6 +217,25 @@
       <div class="dialog-actions">
         <button class="btn btn-ghost" type="button" id="cancelBtn">Cancel</button>
         <button class="btn btn-primary" type="submit" id="saveBtn">Create</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- ============ IDEA -> TASK DIALOG ============ -->
+  <dialog class="dialog" id="convertDialog">
+    <form method="dialog" id="convertForm">
+      <h2 class="dialog-title">Make this a task</h2>
+
+      <p class="convert-text" id="convertText"></p>
+
+      <label class="field">
+        <span class="field-label">Which project?</span>
+        <select class="input" id="convertProject"></select>
+      </label>
+
+      <div class="dialog-actions">
+        <button class="btn btn-ghost" type="button" id="convertCancel">Cancel</button>
+        <button class="btn btn-primary" type="submit">Add as task</button>
       </div>
     </form>
   </dialog>

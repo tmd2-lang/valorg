@@ -23,6 +23,7 @@ npx serve .
 | `config.js` | Supabase project URL and public key |
 | `supabase-setup.sql` | Run once in Supabase to create the table |
 | `supabase-add-goal.sql` | Migration: adds the goal column to an existing table |
+| `supabase-add-ideas.sql` | Migration: creates the ideas table |
 
 ## How it works
 
@@ -43,6 +44,7 @@ change data.** Change the array → `save()` → `render()`. Always that order.
 |---|---|
 | `#/` | Home — everything open, and the goals |
 | `#/projects` | All projects |
+| `#/ideas` | The idea box |
 | `#/p/<id>` | One project and its tasks |
 
 The hash is real navigation: deep links work, and so does the browser's
@@ -122,6 +124,7 @@ Static site, zero config. Or connect the GitHub repo at
 - [ ] Search and filter by status
 - [x] Due dates on tasks
 - [x] Home: what's open across every project, and the goals
+- [x] Idea box
 - [ ] A note captured at the moment you tick something off
 - [ ] "This week" summary on the dashboard
 - [ ] Reorder projects by hand

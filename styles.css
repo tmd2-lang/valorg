@@ -907,3 +907,73 @@ button, input, textarea, select { font: inherit; color: inherit; }
   text-underline-offset: 3px;
 }
 .goal-row-unset:hover { color: var(--accent); }
+
+/* ============ IDEA BOX ============ */
+
+.idea-add {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 18px;
+  max-width: 720px;
+}
+.idea-add .input { flex: 1; }
+
+.idea-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.idea {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  padding: 12px 12px;
+  border-bottom: 1px solid var(--border-soft);
+  transition: background 0.12s;
+}
+.idea:last-child { border-bottom: none; }
+.idea:hover { background: var(--bg-raised); }
+
+.idea-text {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.idea-when {
+  flex: none;
+  color: var(--text-faint);
+  font-size: 12px;
+  white-space: nowrap;
+  cursor: default;
+}
+
+.idea-tools {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.idea:hover .idea-tools,
+.idea:focus-within .idea-tools { opacity: 1; }
+@media (hover: none) {
+  .idea-tools { opacity: 1; }
+}
+
+/* The idea being turned into a task, quoted in the dialog */
+.convert-text {
+  margin: 0 0 20px;
+  padding: 12px 14px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-left: 2px solid var(--accent);
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-dim);
+}
