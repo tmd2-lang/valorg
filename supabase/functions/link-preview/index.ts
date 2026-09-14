@@ -13,6 +13,13 @@
 // Browsers demand permission before letting a page call another origin.
 // These headers grant it. The function still requires a valid login below,
 // so this isn't opening anything up.
+//
+// Note on auth: Supabase can check the login for you, before your code runs.
+// We don't use that here, because browsers never attach an Authorization
+// header to the permission-check request they send first — so that check
+// rejects it, your code never runs, and these headers never get sent. The
+// browser then refuses the real request. Instead we check the login
+// ourselves, below, *after* answering the permission check.
 const cors = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, content-type',
@@ -98,10 +105,24 @@ function absolute(src: string, base: URL): string {
   try { return new URL(src, base).href; } catch { return ''; }
 }
 
+/** Is whoever called this actually signed in? */
+async function signedIn(req: Request): Promise<boolean> {
+  const auth = req.headers.get('Authorization') ?? '';
+  if (!auth.startsWith('Bearer ')) return false;
+
+  // Ask Supabase who this token belongs to. A bad or expired token fails here.
+  const res = await fetch(`${Deno.env.get('SUPABASE_URL')}/auth/v1/user`, {
+    headers: { Authorization: auth, apikey: Deno.env.get('SUPABASE_ANON_KEY') ?? '' },
+  });
+  return res.ok;
+}
+
 Deno.serve(async req => {
-  // Browsers send a preflight OPTIONS request first, asking permission.
+  // The permission check comes first, and must be answered without auth.
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
   if (req.method !== 'POST')    return json({ error: 'Send a POST.' }, 405);
+
+  if (!await signedIn(req)) return json({ error: 'Sign in first.' }, 401);
 
   let body: { url?: string };
   try { body = await req.json(); } catch { return json({ error: 'Expected JSON.' }, 400); }
