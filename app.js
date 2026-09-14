@@ -38,6 +38,9 @@ let projects = [];
 /** @type {Array<{id:string, text:string, createdAt:number}>} */
 let ideas = [];
 
+/** @type {Array<Object>} things you want to buy */
+let wants = [];
+
 let user = null;          // the signed-in account, or null
 let editingId = null;     // project being edited in the dialog, or null
 
@@ -53,6 +56,7 @@ const banner   = $('banner');
 
 const homeView   = $('homeView');
 const ideasView  = $('ideasView');
+const buyView    = $('buyView');
 const listView   = $('listView');
 const detailView = $('detailView');
 const nav        = $('nav');
@@ -180,6 +184,32 @@ async function loadIdeas() {
   return true;
 }
 
+function wantFromRow(r) {
+  return {
+    id: r.id, url: r.url ?? '', title: r.title ?? '', site: r.site ?? '',
+    image: r.image ?? '', price: r.price ?? '', note: r.note ?? '',
+    projectId: r.project_id ?? null,
+    bought: !!r.bought,
+    boughtAt: r.bought_at ? new Date(r.bought_at).getTime() : null,
+    pricedAt: r.priced_at ? new Date(r.priced_at).getTime() : null,
+    createdAt: new Date(r.created_at).getTime(),
+  };
+}
+
+async function loadWants() {
+  const { data, error } = await db
+    .from('wants')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    say(`Could not load your buy list: ${error.message}`, 'error');
+    return false;
+  }
+  wants = data.map(wantFromRow);
+  return true;
+}
+
 /* Every write goes through here. It runs the database call, and if the call
    fails it pulls the real data back down so the screen can't keep showing a
    change that never actually saved. */
@@ -188,7 +218,7 @@ async function push(work) {
   if (!error) return true;
 
   say(`Not saved: ${error.message}`, 'error');
-  await Promise.all([loadProjects(), loadIdeas()]);
+  await Promise.all([loadProjects(), loadIdeas(), loadWants()]);
   render();
   return false;
 }
@@ -206,6 +236,7 @@ function currentRoute() {
   if (match) return { view: 'detail', id: match[1] };
   if (location.hash === '#/projects') return { view: 'list' };
   if (location.hash === '#/ideas')    return { view: 'ideas' };
+  if (location.hash === '#/buy')      return { view: 'buy' };
   return { view: 'home' };
 }
 
@@ -250,6 +281,7 @@ function render() {
 
   homeView.hidden   = view !== 'home';
   ideasView.hidden  = view !== 'ideas';
+  buyView.hidden    = view !== 'buy';
   listView.hidden   = view !== 'list';
   detailView.hidden = view !== 'detail';
 
@@ -258,7 +290,7 @@ function render() {
   countEl.hidden   = view !== 'list';
 
   // Underline whichever nav item you're on. A project page counts as Projects.
-  const navFor = { home: 'home', ideas: 'ideas', list: 'projects', detail: 'projects' }[view];
+  const navFor = { home: 'home', ideas: 'ideas', buy: 'buy', list: 'projects', detail: 'projects' }[view];
   nav.querySelectorAll('.nav-link').forEach(a => {
     a.classList.toggle('nav-here', a.dataset.route === navFor);
   });
@@ -266,6 +298,7 @@ function render() {
   if (view === 'detail')     renderDetail(project);
   else if (view === 'list')  renderList();
   else if (view === 'ideas') renderIdeas();
+  else if (view === 'buy')   renderBuy();
   else                       renderHome();
 }
 
@@ -323,6 +356,243 @@ async function removeIdea(id) {
   ideas = ideas.filter(i => i.id !== id);
   render();
   await push(() => db.from('ideas').delete().eq('id', id));
+}
+
+
+/* ---------- BUY LIST ---------- */
+
+const wantGrid   = $('wantGrid');
+const wantEmpty  = $('wantEmpty');
+const wantMeta   = $('buyMeta');
+const boughtGrid = $('boughtGrid');
+const boughtHead = $('boughtHead');
+const boughtMeta = $('boughtMeta');
+const wantUrl    = $('wantUrl');
+const wantBtn    = $('wantBtn');
+
+function renderBuy() {
+  const open   = wants.filter(w => !w.bought).sort((a, b) => b.createdAt - a.createdAt);
+  const bought = wants.filter(w =>  w.bought).sort((a, b) => (b.boughtAt ?? 0) - (a.boughtAt ?? 0));
+
+  wantMeta.textContent = open.length
+    ? `${open.length} item${open.length === 1 ? '' : 's'}`
+    : '';
+
+  wantGrid.replaceChildren();
+  open.forEach(w => wantGrid.append(wantCard(w)));
+  wantEmpty.hidden = open.length > 0;
+
+  boughtHead.hidden = bought.length === 0;
+  boughtMeta.textContent = bought.length ? `${bought.length}` : '';
+  boughtGrid.replaceChildren();
+  bought.forEach(w => boughtGrid.append(wantCard(w)));
+}
+
+function wantCard(w) {
+  const card = el('article', 'want' + (w.bought ? ' want-bought' : ''));
+
+  // The picture, when the site gave us one.
+  const frame = el('div', 'want-image');
+  if (w.image) {
+    const img = document.createElement('img');
+    img.src = w.image;
+    img.alt = '';
+    img.loading = 'lazy';
+    // A dead image URL would otherwise leave a broken icon sitting there.
+    img.addEventListener('error', () => { frame.replaceChildren(el('span', 'want-noimage', '◇')); });
+    frame.append(img);
+  } else {
+    frame.append(el('span', 'want-noimage', '◇'));
+  }
+  card.append(frame);
+
+  const body = el('div', 'want-body');
+
+  const title = w.url ? el('a', 'want-title', w.title || w.url) : el('span', 'want-title', w.title);
+  if (w.url) { title.href = w.url; title.target = '_blank'; title.rel = 'noopener noreferrer'; }
+  body.append(title);
+
+  const line = el('div', 'want-line');
+  if (w.price) {
+    const price = el('span', 'want-price', w.price);
+    if (w.pricedAt) price.title = `Price seen ${fullDate(w.pricedAt)}`;
+    line.append(price);
+  }
+  if (w.site) line.append(el('span', 'want-site', w.site));
+
+  const project = w.projectId && projects.find(p => p.id === w.projectId);
+  if (project) line.append(el('span', 'want-for', project.name));
+
+  if (line.children.length) body.append(line);
+
+  if (w.note) body.append(el('p', 'want-note', w.note));
+
+  const foot = el('div', 'want-foot');
+
+  const mark = el('button', 'btn btn-ghost btn-sm', w.bought ? 'Put back' : 'Bought');
+  mark.type = 'button';
+  mark.addEventListener('click', () => toggleBought(w.id));
+
+  const edit = iconBtn('Edit', '✎', () => openWantDialog(w.id));
+  const del  = iconBtn('Remove', '✕', () => removeWant(w.id), true);
+
+  foot.append(mark, el('span', 'want-spacer'), edit, del);
+  body.append(foot);
+
+  card.append(body);
+  return card;
+}
+
+/* Adding. If it looks like a link we ask the server to describe it first;
+   whatever comes back is a starting point you can edit. */
+
+async function addWant(input) {
+  const looksLikeLink = /^https?:\/\//i.test(input) || /^[\w-]+(\.[\w-]+)+\//.test(input);
+  const url = looksLikeLink ? (/^https?:\/\//i.test(input) ? input : 'https://' + input) : '';
+
+  let fields = { url, title: input, site: '', image: '', price: '', priced_at: null };
+
+  if (url) {
+    wantBtn.disabled = true;
+    wantBtn.textContent = 'Reading…';
+
+    const { data, error } = await db.functions.invoke('link-preview', { body: { url } });
+
+    wantBtn.disabled = false;
+    wantBtn.textContent = 'Add';
+
+    if (error || data?.error) {
+      // Plenty of shops refuse to be read. Add it anyway, unfilled.
+      say("That site wouldn't share a preview — added the link, fill in the rest.", 'info');
+      fields.title = url;
+    } else {
+      fields = {
+        url:   data.url || url,
+        title: data.title || url,
+        site:  data.site || '',
+        image: data.image || '',
+        price: data.price || '',
+        priced_at: data.price ? new Date().toISOString() : null,
+      };
+    }
+  }
+
+  const { data: row, error } = await db.from('wants').insert(fields).select().single();
+  if (error) { say(`Could not add: ${error.message}`, 'error'); return; }
+
+  wants.push(wantFromRow(row));
+  render();
+
+  // Straight into the dialog so you can correct it while it's in front of you.
+  openWantDialog(row.id);
+}
+
+async function toggleBought(id) {
+  const w = wants.find(x => x.id === id);
+  if (!w) return;
+
+  const bought = !w.bought;
+  const at = bought ? new Date().toISOString() : null;
+
+  wants = wants.map(x => x.id === id
+    ? { ...x, bought, boughtAt: bought ? Date.now() : null }
+    : x);
+  render();
+
+  await push(() => db.from('wants').update({ bought, bought_at: at }).eq('id', id));
+}
+
+async function removeWant(id) {
+  const w = wants.find(x => x.id === id);
+  if (!w) return;
+  if (!confirm(`Remove "${w.title}" from the list?`)) return;
+
+  wants = wants.filter(x => x.id !== id);
+  render();
+  await push(() => db.from('wants').delete().eq('id', id));
+}
+
+/* ---------- BUY LIST DIALOG ---------- */
+
+const wantDialog = $('wantDialog');
+const wTitle = $('wTitle');
+const wUrl   = $('wUrl');
+const wPrice = $('wPrice');
+const wNote  = $('wNote');
+const wProject = $('wProject');
+const wantPreview = $('wantPreview');
+
+let editingWantId = null;
+
+function openWantDialog(id) {
+  const w = wants.find(x => x.id === id);
+  if (!w) return;
+
+  editingWantId = id;
+
+  wTitle.value = w.title;
+  wUrl.value   = w.url;
+  wPrice.value = w.price;
+  wNote.value  = w.note;
+
+  // Picture and site, if we got them.
+  if (w.image) {
+    $('wantPreviewImg').src = w.image;
+    $('wantPreviewSite').textContent = w.site || '';
+    wantPreview.hidden = false;
+  } else {
+    wantPreview.hidden = true;
+  }
+
+  // Which project it's for, if any.
+  wProject.replaceChildren();
+  const none = document.createElement('option');
+  none.value = '';
+  none.textContent = 'Nothing in particular';
+  wProject.append(none);
+  [...projects].sort((a, b) => b.createdAt - a.createdAt).forEach(p => {
+    const opt = document.createElement('option');
+    opt.value = p.id;
+    opt.textContent = p.name;
+    wProject.append(opt);
+  });
+  wProject.value = w.projectId ?? '';
+
+  wantDialog.showModal();
+  wTitle.focus();
+  wTitle.select();
+}
+
+async function saveWantDialog() {
+  const id = editingWantId;
+  editingWantId = null;
+  const w = wants.find(x => x.id === id);
+  if (!w) return;
+
+  const title = wTitle.value.trim();
+  if (!title) return;
+
+  const price = wPrice.value.trim();
+
+  const fields = {
+    title,
+    url:   wUrl.value.trim(),
+    price,
+    note:  wNote.value.trim(),
+    project_id: wProject.value || null,
+    // Typing a new price makes it fresh again.
+    priced_at: price && price !== w.price ? new Date().toISOString() : (price ? null : null),
+  };
+
+  wants = wants.map(x => x.id === id ? {
+    ...x, title, url: fields.url, price, note: fields.note, projectId: fields.project_id,
+  } : x);
+  render();
+
+  const patch = { ...fields };
+  if (!(price && price !== w.price)) delete patch.priced_at;   // leave the old timestamp alone
+
+  await push(() => db.from('wants').update(patch).eq('id', id));
 }
 
 
@@ -976,7 +1246,7 @@ async function onSignedIn(session) {
   setUpFor = session.user.id;
 
   user = session.user;
-  await Promise.all([loadProjects(), loadIdeas()]);
+  await Promise.all([loadProjects(), loadIdeas(), loadWants()]);
   offerImport();
   render();
 }
@@ -986,6 +1256,7 @@ function onSignedOut() {
   user = null;
   projects = [];
   ideas = [];
+  wants = [];
   authPassword.value = '';
   render();
 }
@@ -1056,6 +1327,21 @@ $('ideaForm').addEventListener('submit', e => {
   addIdea(text);
   ideaInput.value = '';
   ideaInput.focus();
+});
+
+$('wantForm').addEventListener('submit', e => {
+  e.preventDefault();
+  const text = wantUrl.value.trim();
+  if (!text) return;
+  wantUrl.value = '';
+  addWant(text);
+});
+
+$('wantEditForm').addEventListener('submit', saveWantDialog);
+$('wCancel').addEventListener('click', () => wantDialog.close());
+wantDialog.addEventListener('close', () => { editingWantId = null; });
+wTitle.addEventListener('keydown', e => {
+  if (e.key === 'Enter') { e.preventDefault(); $('wantEditForm').requestSubmit(); }
 });
 
 $('convertForm').addEventListener('submit', convertIdea);

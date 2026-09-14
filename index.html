@@ -22,6 +22,7 @@
           <a class="nav-link" href="#/"         data-route="home">Home</a>
           <a class="nav-link" href="#/projects" data-route="projects">Projects</a>
           <a class="nav-link" href="#/ideas"    data-route="ideas">Ideas</a>
+          <a class="nav-link" href="#/buy"      data-route="buy">Buy list</a>
         </nav>
       </div>
       <div class="topbar-actions">
@@ -138,6 +139,35 @@
 
     </div>
 
+    <!-- ---- BUY LIST ---- -->
+    <div id="buyView" hidden>
+
+      <section class="block">
+        <div class="block-head">
+          <h2 class="block-title">Buy list</h2>
+          <span class="block-meta" id="buyMeta"></span>
+        </div>
+
+        <form class="idea-add" id="wantForm">
+          <input class="input" id="wantUrl" type="text" autocomplete="off"
+                 placeholder="Paste a link, or type what you want" />
+          <button class="btn btn-primary" type="submit" id="wantBtn">Add</button>
+        </form>
+
+        <div class="want-grid" id="wantGrid"></div>
+        <p class="block-empty" id="wantEmpty" hidden>
+          Nothing on the list. Paste a link to something you want.
+        </p>
+
+        <div class="block-head bought-head" id="boughtHead" hidden>
+          <h2 class="block-title">Bought</h2>
+          <span class="block-meta" id="boughtMeta"></span>
+        </div>
+        <div class="want-grid want-grid-bought" id="boughtGrid"></div>
+      </section>
+
+    </div>
+
     <!-- ---- DETAIL VIEW: one project and its tasks ---- -->
     <div id="detailView" hidden>
 
@@ -217,6 +247,51 @@
       <div class="dialog-actions">
         <button class="btn btn-ghost" type="button" id="cancelBtn">Cancel</button>
         <button class="btn btn-primary" type="submit" id="saveBtn">Create</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- ============ BUY LIST ITEM DIALOG ============ -->
+  <dialog class="dialog" id="wantDialog">
+    <form method="dialog" id="wantEditForm">
+      <h2 class="dialog-title" id="wantDialogTitle">Item</h2>
+
+      <div class="want-preview" id="wantPreview" hidden>
+        <img class="want-preview-img" id="wantPreviewImg" alt="" />
+        <span class="want-preview-site" id="wantPreviewSite"></span>
+      </div>
+
+      <label class="field">
+        <span class="field-label">What is it?</span>
+        <input class="input" id="wTitle" type="text" maxlength="200" required autocomplete="off" />
+      </label>
+
+      <label class="field">
+        <span class="field-label">Link <span class="opt">optional</span></span>
+        <input class="input" id="wUrl" type="text" autocomplete="off" placeholder="https://" />
+      </label>
+
+      <div class="field-row">
+        <label class="field">
+          <span class="field-label">Price <span class="opt">optional</span></span>
+          <input class="input" id="wPrice" type="text" maxlength="40" autocomplete="off" placeholder="$120" />
+        </label>
+
+        <label class="field">
+          <span class="field-label">For <span class="opt">optional</span></span>
+          <select class="input" id="wProject"></select>
+        </label>
+      </div>
+
+      <label class="field">
+        <span class="field-label">Why <span class="opt">optional</span></span>
+        <textarea class="input textarea" id="wNote" rows="3" maxlength="500"
+                  placeholder="So future-you remembers why this was on the list."></textarea>
+      </label>
+
+      <div class="dialog-actions">
+        <button class="btn btn-ghost" type="button" id="wCancel">Cancel</button>
+        <button class="btn btn-primary" type="submit">Save</button>
       </div>
     </form>
   </dialog>

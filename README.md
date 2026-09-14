@@ -24,6 +24,8 @@ npx serve .
 | `supabase-setup.sql` | Run once in Supabase to create the table |
 | `supabase-add-goal.sql` | Migration: adds the goal column to an existing table |
 | `supabase-add-ideas.sql` | Migration: creates the ideas table |
+| `supabase-add-wants.sql` | Migration: creates the buy list table |
+| `supabase/functions/link-preview/` | Server code that reads a link's preview tags |
 
 ## How it works
 
@@ -45,6 +47,7 @@ change data.** Change the array → `save()` → `render()`. Always that order.
 | `#/` | Home — everything open, and the goals |
 | `#/projects` | All projects |
 | `#/ideas` | The idea box |
+| `#/buy` | The buy list |
 | `#/p/<id>` | One project and its tasks |
 
 The hash is real navigation: deep links work, and so does the browser's
